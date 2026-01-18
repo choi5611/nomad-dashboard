@@ -1,11 +1,25 @@
 import { Canvas } from "@react-three/fiber"
 import { CameraControls, Stars } from "@react-three/drei"
-import { Suspense, useRef } from "react"
+import { Suspense, useRef, useEffect } from "react"
 import Globe from "./Globe"
 import * as THREE from "three"
+import { useStore } from "@/store/useStore"
 
 function SceneContent() {
   const cameraControlsRef = useRef<CameraControls>(null)
+  const pauseRotation = useStore((state) => state.pauseRotation)
+
+  useEffect(() => {
+    const controls = cameraControlsRef.current
+    if (!controls) return
+
+    const handleControlStart = () => pauseRotation()
+    controls.addEventListener('controlstart', handleControlStart)
+
+    return () => {
+      controls.removeEventListener('controlstart', handleControlStart)
+    }
+  }, [pauseRotation])
 
   const handleSelectPin = (position: THREE.Vector3) => {
     // 핀 위치 방향으로 카메라 이동 (지구본 중심을 바라봄)

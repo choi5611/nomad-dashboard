@@ -5,23 +5,16 @@ import * as THREE from "three"
 import Pin from "./Pin"
 import { GLOBE_RADIUS } from "./math"
 import { useStore, type City } from "@/store/useStore"
+import { CITIES } from "@/data/cities"
 
 interface GlobeProps {
   onSelectPin?: (pos: THREE.Vector3) => void
 }
 
-// 도시 데이터 리스트
-const CITIES: City[] = [
-  { name: "Seoul", lat: 37.5665, lng: 126.9780, timezone: "Asia/Seoul", countryCode: "KR", currencyCode: "KRW" },
-  { name: "New York", lat: 40.7128, lng: -74.0060, timezone: "America/New_York", countryCode: "US", currencyCode: "USD" },
-  { name: "Paris", lat: 48.8566, lng: 2.3522, timezone: "Europe/Paris", countryCode: "FR", currencyCode: "EUR" },
-  { name: "London", lat: 51.5074, lng: -0.1278, timezone: "Europe/London", countryCode: "GB", currencyCode: "GBP" },
-  { name: "Tokyo", lat: 35.6762, lng: 139.6503, timezone: "Asia/Tokyo", countryCode: "JP", currencyCode: "JPY" },
-]
-
 export default function Globe({ onSelectPin }: GlobeProps) {
   const groupRef = useRef<THREE.Group>(null)
   const setSelectedCity = useStore((state) => state.setSelectedCity)
+  const isAutoRotating = useStore((state) => state.isAutoRotating)
 
   // 텍스처 로드 (Three.js 예제 텍스처 사용)
   const [colorMap, normalMap, specularMap] = useTexture([
@@ -31,7 +24,7 @@ export default function Globe({ onSelectPin }: GlobeProps) {
   ])
 
   useFrame((_, delta) => {
-    if (groupRef.current) {
+    if (groupRef.current && isAutoRotating) {
       groupRef.current.rotation.y += delta * 0.05
     }
   })
@@ -43,7 +36,7 @@ export default function Globe({ onSelectPin }: GlobeProps) {
 
   return (
     <group ref={groupRef}>
-      {/* 1. 지구본 본체 (텍스처 적용) */}
+      {/* 1. 지구본 본체 (텍스처 적용) - 텍스처 정렬을 위해 Y축 회전 */}
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
         <meshPhongMaterial
