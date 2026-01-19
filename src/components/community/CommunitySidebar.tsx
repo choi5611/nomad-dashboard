@@ -1,5 +1,6 @@
 import { useStore } from "@/store/useStore"
 import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Heart, MessageCircle } from "lucide-react"
+import { useState } from "react"
 
 // 목데이터 - 나중에 Supabase로 교체
 const MOCK_POSTS = [
@@ -51,11 +52,22 @@ const typeLabels = {
   cafe: "카페",
   tip: "팁",
 }
+const TABS = [
+  { id: "all", label: "전체" },
+  { id: "experience", label: "경험담" },
+  { id: "restaurant", label: "맛집" },
+  { id: "tip", label: "팁" },
+]
 
 export default function CommunitySidebar() {
   const selectedCity = useStore((state) => state.selectedCity)
   const isSidebarOpen = useStore((state) => state.isSidebarOpen)
   const closeSidebar = useStore((state) => state.closeSidebar)
+  const [activeTab, setActiveTab] = useState("all")
+  const filteredPosts = MOCK_POSTS.filter((post) => {
+    if (activeTab === "all") return true
+    return post.type === activeTab
+  })
 
   return (
     <div
@@ -81,19 +93,24 @@ export default function CommunitySidebar() {
 
       {/* Tabs */}
       <div className="flex border-b border-white/10">
-        {["전체", "경험담", "맛집", "팁"].map((tab) => (
+        {TABS.map((tab) => (
           <button
-            key={tab}
-            className="flex-1 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+
+            className={`flex-1 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 transition-colors ${
+              activeTab === tab.id ? "text-cyan-400 border-b-2 border-cyan-400 bg-white/5" 
+              : "text-white/70 hover:text-white hover:bg-white/5"
+            }`}
           >
-            {tab}
+            {tab.label}
           </button>
         ))}
       </div>
 
       {/* Posts */}
       <div className="overflow-y-auto h-[calc(100%-120px)] p-4 space-y-4">
-        {MOCK_POSTS.map((post) => {
+        {filteredPosts.map((post) => {
           const TypeIcon = typeIcons[post.type as keyof typeof typeIcons] || Building2
           const typeLabel = typeLabels[post.type as keyof typeof typeLabels] || "기타"
 

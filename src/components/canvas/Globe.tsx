@@ -29,6 +29,8 @@ export default function Globe({ onSelectPin }: GlobeProps) {
     }
   })
 
+  const globeRef = useRef<THREE.Object3D>(null)
+
   const handlePinClick = (city: City, pos: THREE.Vector3) => {
     setSelectedCity(city)
     if (onSelectPin) onSelectPin(pos)
@@ -37,7 +39,7 @@ export default function Globe({ onSelectPin }: GlobeProps) {
   return (
     <group ref={groupRef}>
       {/* 1. 지구본 본체 (텍스처 적용) - 텍스처 정렬을 위해 Y축 회전 */}
-      <mesh>
+      <mesh ref={globeRef}>
         <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
         <meshPhongMaterial
           map={colorMap}
@@ -80,6 +82,7 @@ export default function Globe({ onSelectPin }: GlobeProps) {
           lat={city.lat} 
           lng={city.lng} 
           label={city.name} 
+          occludeRef={globeRef}
           onSelect={(pos) => handlePinClick(city, pos)} 
         />
       ))}

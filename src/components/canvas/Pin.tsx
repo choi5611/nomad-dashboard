@@ -8,12 +8,14 @@ interface PinProps {
   lat: number
   lng: number
   label: string
+  occludeRef?: React.RefObject<THREE.Object3D | null>
   onSelect?: (pos: THREE.Vector3) => void
 }
 
-export default function Pin({ lat, lng, label, onSelect }: PinProps) {
+export default function Pin({ lat, lng, label, occludeRef, onSelect }: PinProps) {
   const groupRef = useRef<THREE.Group>(null)
-  const position = getPositionFromLatLon(lat, lng)
+  // 지표면에서 약간 띄우기 (GLOBE_RADIUS + 0.05)
+  const position = getPositionFromLatLon(lat, lng, 5.05)
 
   const handleClick = () => {
     if (onSelect && groupRef.current) {
@@ -33,7 +35,12 @@ export default function Pin({ lat, lng, label, onSelect }: PinProps) {
       </mesh>
 
       {/* HTML 라벨 (거리 원근감 적용) */}
-      <Html distanceFactor={10} occlude center style={{ pointerEvents: 'auto' }}> {/* pointerEvents: auto so we can click the HTML */}
+      <Html 
+        distanceFactor={10} 
+        occlude={occludeRef ? [occludeRef as React.RefObject<THREE.Object3D>] : true} 
+        center 
+        style={{ pointerEvents: 'auto' }}
+      > {/* pointerEvents: auto so we can click the HTML */}
         <div 
           onClick={(e) => {
             e.stopPropagation() // Prevent click from bubbling to the canvas/mesh if unnecessary
