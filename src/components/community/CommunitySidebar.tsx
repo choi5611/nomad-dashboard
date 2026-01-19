@@ -1,6 +1,8 @@
 import { useStore } from "@/store/useStore"
-import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Heart, MessageCircle } from "lucide-react"
+import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Heart, MessageCircle, Plus } from "lucide-react"
 import { useState } from "react"
+import PostCard from "./PostCard"
+import WritePostForm from "./WritePostForm"
 
 // 목데이터 - 나중에 Supabase로 교체
 const MOCK_POSTS = [
@@ -64,6 +66,7 @@ export default function CommunitySidebar() {
   const isSidebarOpen = useStore((state) => state.isSidebarOpen)
   const closeSidebar = useStore((state) => state.closeSidebar)
   const [activeTab, setActiveTab] = useState("all")
+  const [isWriting, setIsWriting] = useState(false)
   const filteredPosts = MOCK_POSTS.filter((post) => {
     if (activeTab === "all") return true
     return post.type === activeTab
@@ -83,12 +86,20 @@ export default function CommunitySidebar() {
             {selectedCity?.name || "Select a City"}
           </h2>
         </div>
+        <div className="flex items-center gap-1">
+         <button 
+    onClick={() => setIsWriting(true)} 
+    className="p-2 hover:bg-white/10 rounded-lg transition-colors text-cyan-400"
+  >
+    <Plus className="w-5 h-5" />
+  </button>
         <button
           onClick={closeSidebar}
           className="p-2 hover:bg-white/10 rounded-lg transition-colors"
         >
           <X className="w-5 h-5 text-white/70" />
         </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -115,58 +126,16 @@ export default function CommunitySidebar() {
           const typeLabel = typeLabels[post.type as keyof typeof typeLabels] || "기타"
 
           return (
-            <div
-              key={post.id}
-              className="bg-white/5 rounded-xl p-4 border border-white/10 hover:border-cyan-500/30 transition-colors"
-            >
-              {/* Post Header */}
-              <div className="flex items-center gap-3 mb-3">
-                <img
-                  src={post.avatar}
-                  alt={post.author}
-                  className="w-10 h-10 rounded-full bg-slate-700"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-white">{post.author}</span>
-                    <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">
-                      <TypeIcon className="w-3 h-3" />
-                      {typeLabel}
-                    </span>
-                  </div>
-                  <span className="text-xs text-white/50">{post.createdAt}</span>
-                </div>
-              </div>
-
-              {/* Content */}
-              <p className="text-white/90 text-sm leading-relaxed mb-3">
-                {post.content}
-              </p>
-
-              {/* Image */}
-              {post.image && (
-                <img
-                  src={post.image}
-                  alt="post"
-                  className="w-full h-40 object-cover rounded-lg mb-3"
-                />
-              )}
-
-              {/* Actions */}
-              <div className="flex items-center gap-4 text-white/50 text-sm">
-                <button className="flex items-center gap-1 hover:text-pink-400 transition-colors">
-                  <Heart className="w-4 h-4" />
-                  {post.likes}
-                </button>
-                <button className="flex items-center gap-1 hover:text-cyan-400 transition-colors">
-                  <MessageCircle className="w-4 h-4" />
-                  {post.comments}
-                </button>
-              </div>
-            </div>
+           <PostCard key={post.id} post={post} typeIcon={TypeIcon} typeLabel={typeLabel} />
           )
         })}
       </div>
+      {isWriting && (
+  <WritePostForm
+    onClose={() => setIsWriting(false)} 
+    tabs={TABS} 
+  />
+)}
     </div>
   )
 }
