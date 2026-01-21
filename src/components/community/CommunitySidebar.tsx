@@ -1,45 +1,9 @@
+import { useState, useEffect } from "react"
+import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Plus, Loader2 } from "lucide-react"
+import { supabase } from "@/lib/supabase"
 import { useStore } from "@/store/useStore"
-import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Heart, MessageCircle, Plus } from "lucide-react"
-import { useState } from "react"
 import PostCard from "./PostCard"
 import WritePostForm from "./WritePostForm"
-
-// 목데이터 - 나중에 Supabase로 교체
-const MOCK_POSTS = [
-  {
-    id: 1,
-    type: "experience",
-    author: "nomad_jenny",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=jenny",
-    content: "서울 강남 코워킹스페이스 추천! WeWork 선릉점 정말 좋아요. 커피도 무제한이고 분위기 최고 👍",
-    image: null,
-    likes: 24,
-    comments: 5,
-    createdAt: "2시간 전"
-  },
-  {
-    id: 2,
-    type: "restaurant",
-    author: "digital_mike",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=mike",
-    content: "을지로 노포 감자탕 맛집 발견! 가성비 미쳤어요 🍲",
-    image: "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=400",
-    likes: 42,
-    comments: 12,
-    createdAt: "5시간 전"
-  },
-  {
-    id: 3,
-    type: "tip",
-    author: "sarah_travels",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=sarah",
-    content: "한국 입국 시 K-ETA 필수! 미리 신청해두세요. 승인까지 1-2일 걸릴 수 있어요.",
-    image: null,
-    likes: 89,
-    comments: 23,
-    createdAt: "1일 전"
-  },
-]
 
 const typeIcons = {
   experience: Building2,
@@ -67,10 +31,54 @@ export default function CommunitySidebar() {
   const closeSidebar = useStore((state) => state.closeSidebar)
   const [activeTab, setActiveTab] = useState("all")
   const [isWriting, setIsWriting] = useState(false)
-  const filteredPosts = MOCK_POSTS.filter((post) => {
-    if (activeTab === "all") return true
-    return post.type === activeTab
-  })
+  const [posts, setPosts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchPosts = async () => {
+    if (!selectedCity) return
+    setLoading(true)
+    
+    try {
+      let query = supabase
+        .from('posts')
+        .select('*, profiles(username, avatar_url)')
+        .eq('city_id', selectedCity.name.toLowerCase())
+        .order('created_at', { ascending: false })
+
+      if (activeTab !== 'all') {
+        query = query.eq('category', activeTab)
+      }
+
+      const { data, error } = await query
+      if (error) throw error
+      setPosts(data || [])
+    } catch (error) {
+      console.error('Error fetching posts:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchPosts()
+
+    // 실시간 구독 설정
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'posts' },
+        () => {
+          fetchPosts()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [selectedCity, activeTab])
+
 
   return (
     <div
@@ -121,18 +129,30 @@ export default function CommunitySidebar() {
 
       {/* Posts */}
       <div className="overflow-y-auto h-[calc(100%-120px)] p-4 space-y-4">
-        {filteredPosts.map((post) => {
-          const TypeIcon = typeIcons[post.type as keyof typeof typeIcons] || Building2
-          const typeLabel = typeLabels[post.type as keyof typeof typeLabels] || "기타"
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-40 text-white/30 gap-3">
+            <Loader2 className="w-8 h-8 animate-spin" />
+            <p className="text-sm">게시글을 불러오는 중...</p>
+          </div>
+        ) : posts.length > 0 ? (
+          posts.map((post) => {
+            const TypeIcon = typeIcons[post.category as keyof typeof typeIcons] || Building2
+            const typeLabel = typeLabels[post.category as keyof typeof typeLabels] || "기타"
 
-          return (
-           <PostCard key={post.id} post={post} typeIcon={TypeIcon} typeLabel={typeLabel} />
-          )
-        })}
+            return (
+              <PostCard key={post.id} post={post} typeIcon={TypeIcon} typeLabel={typeLabel} />
+            )
+          })
+        ) : (
+          <div className="flex flex-col items-center justify-center h-40 text-white/30 text-center px-6">
+            <p className="text-sm">아직 게시글이 없습니다.<br/>첫 번째 소식을 들려주세요!</p>
+          </div>
+        )}
       </div>
       {isWriting && (
   <WritePostForm
-    onClose={() => setIsWriting(false)} 
+    onClose={() => setIsWriting(false)}
+    onPostCreate={fetchPosts}
     tabs={TABS} 
   />
 )}
