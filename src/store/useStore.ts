@@ -18,6 +18,12 @@ interface AppState {
   isSidebarOpen: boolean
   openSidebar: () => void
   closeSidebar: () => void
+  isLoginModalOpen: boolean
+  openLoginModal: () => void
+  closeLoginModal: () => void
+  isSettingsOpen: boolean
+  openSettings: () => void
+  closeSettings: () => void
 }
 
 const AUTO_ROTATE_DELAY = 5000 // 5초 후 다시 회전
@@ -52,4 +58,10 @@ export const useStore = create<AppState>((set, get) => ({
   isSidebarOpen: false,
   openSidebar: () => set({ isSidebarOpen: true }),
   closeSidebar: () => set({ isSidebarOpen: false }),
+  isLoginModalOpen: false,
+  openLoginModal: () => set({ isLoginModalOpen: true }),
+  closeLoginModal: () => set({ isLoginModalOpen: false }),
+  isSettingsOpen: false,
+  openSettings: () => set({ isSettingsOpen: true, isSidebarOpen: false }), // 설정 열 때 커뮤니티 사이드바는 닫음
+  closeSettings: () => set({ isSettingsOpen: false }),
 }))

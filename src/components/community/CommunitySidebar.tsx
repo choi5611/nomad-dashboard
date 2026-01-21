@@ -1,45 +1,10 @@
+import { useState, useEffect } from "react"
+import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Plus, Loader2 } from "lucide-react"
 import { useStore } from "@/store/useStore"
-import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Heart, MessageCircle, Plus } from "lucide-react"
-import { useState } from "react"
+import { useInView } from "react-intersection-observer"
+import { useInfinitePosts } from "@/hooks/useInfinitePosts"
 import PostCard from "./PostCard"
 import WritePostForm from "./WritePostForm"
-
-// 목데이터 - 나중에 Supabase로 교체
-const MOCK_POSTS = [
-  {
-    id: 1,
-    type: "experience",
-    author: "nomad_jenny",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=jenny",
-    content: "서울 강남 코워킹스페이스 추천! WeWork 선릉점 정말 좋아요. 커피도 무제한이고 분위기 최고 👍",
-    image: null,
-    likes: 24,
-    comments: 5,
-    createdAt: "2시간 전"
-  },
-  {
-    id: 2,
-    type: "restaurant",
-    author: "digital_mike",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=mike",
-    content: "을지로 노포 감자탕 맛집 발견! 가성비 미쳤어요 🍲",
-    image: "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=400",
-    likes: 42,
-    comments: 12,
-    createdAt: "5시간 전"
-  },
-  {
-    id: 3,
-    type: "tip",
-    author: "sarah_travels",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=sarah",
-    content: "한국 입국 시 K-ETA 필수! 미리 신청해두세요. 승인까지 1-2일 걸릴 수 있어요.",
-    image: null,
-    likes: 89,
-    comments: 23,
-    createdAt: "1일 전"
-  },
-]
 
 const typeIcons = {
   experience: Building2,
@@ -67,10 +32,28 @@ export default function CommunitySidebar() {
   const closeSidebar = useStore((state) => state.closeSidebar)
   const [activeTab, setActiveTab] = useState("all")
   const [isWriting, setIsWriting] = useState(false)
-  const filteredPosts = MOCK_POSTS.filter((post) => {
-    if (activeTab === "all") return true
-    return post.type === activeTab
+  
+  const { ref, inView } = useInView()
+  
+  const { 
+    data, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage, 
+    status,
+    refetch 
+  } = useInfinitePosts({ 
+    category: activeTab, 
+    cityId: selectedCity?.name?.toLowerCase() // 이름 기반 매칭 주의: DB와 일치해야 함
   })
+
+  useEffect(() => {
+    if (inView && hasNextPage) {
+      fetchNextPage()
+    }
+  }, [inView, hasNextPage, fetchNextPage])
+
+  const posts = data?.pages.flatMap((page) => page) || []
 
   return (
     <div
@@ -88,11 +71,11 @@ export default function CommunitySidebar() {
         </div>
         <div className="flex items-center gap-1">
          <button 
-    onClick={() => setIsWriting(true)} 
-    className="p-2 hover:bg-white/10 rounded-lg transition-colors text-cyan-400"
-  >
-    <Plus className="w-5 h-5" />
-  </button>
+            onClick={() => setIsWriting(true)} 
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-cyan-400"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
         <button
           onClick={closeSidebar}
           className="p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -120,22 +103,46 @@ export default function CommunitySidebar() {
       </div>
 
       {/* Posts */}
-      <div className="overflow-y-auto h-[calc(100%-120px)] p-4 space-y-4">
-        {filteredPosts.map((post) => {
-          const TypeIcon = typeIcons[post.type as keyof typeof typeIcons] || Building2
-          const typeLabel = typeLabels[post.type as keyof typeof typeLabels] || "기타"
+      <div className="overflow-y-auto h-[calc(100%-120px)] p-4 space-y-4 no-scrollbar">
+        {status === 'pending' ? (
+          <div className="flex flex-col items-center justify-center h-40 text-white/30 gap-3">
+            <Loader2 className="w-8 h-8 animate-spin" />
+            <p className="text-sm">게시글을 불러오는 중...</p>
+          </div>
+        ) : posts.length > 0 ? (
+          <>
+            {posts.map((post) => {
+              const TypeIcon = typeIcons[post.category as keyof typeof typeIcons] || Building2
+              const typeLabel = typeLabels[post.category as keyof typeof typeLabels] || "기타"
 
-          return (
-           <PostCard key={post.id} post={post} typeIcon={TypeIcon} typeLabel={typeLabel} />
-          )
-        })}
+              return (
+                <PostCard 
+                  key={post.id} 
+                  post={post} 
+                  typeIcon={TypeIcon} 
+                  typeLabel={typeLabel} 
+                  onDelete={() => refetch()}
+                />
+              )
+            })}
+             {/* Infinite Scroll Trigger */}
+            <div ref={ref} className="h-10 flex justify-center items-center">
+              {isFetchingNextPage && <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />}
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center h-40 text-white/30 text-center px-6">
+            <p className="text-sm">아직 게시글이 없습니다.<br/>첫 번째 소식을 들려주세요!</p>
+          </div>
+        )}
       </div>
       {isWriting && (
-  <WritePostForm
-    onClose={() => setIsWriting(false)} 
-    tabs={TABS} 
-  />
-)}
+        <WritePostForm
+          onClose={() => setIsWriting(false)}
+          onPostCreate={() => refetch()}
+          tabs={TABS} 
+        />
+      )}
     </div>
   )
 }
