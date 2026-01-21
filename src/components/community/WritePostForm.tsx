@@ -26,7 +26,7 @@ export default function WritePostForm({ onClose, onPostCreate, tabs }: WritePost
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length + images.length > 12) {
-      toast.error("이미지는 최대 12장까지 업로드할 수 있습니다.")
+      toast.error("미디어는 최대 12개까지 업로드할 수 있습니다.")
       return
     }
 
@@ -51,14 +51,18 @@ export default function WritePostForm({ onClose, onPostCreate, tabs }: WritePost
       const fileName = `${uuidv4()}.${fileExt}`
       const filePath = `${user?.id}/${fileName}`
 
+      // 비디오인지 확인
+      const isVideo = file.type.startsWith('video/')
+      const bucketName = isVideo ? 'post-videos' : 'post-images'
+
       const { error: uploadError } = await supabase.storage
-        .from('post-images')
+        .from(bucketName)
         .upload(filePath, file)
 
       if (uploadError) throw uploadError
 
       const { data: { publicUrl } } = supabase.storage
-        .from('post-images')
+        .from(bucketName)
         .getPublicUrl(filePath)
 
       return publicUrl
@@ -155,7 +159,7 @@ export default function WritePostForm({ onClose, onPostCreate, tabs }: WritePost
         {/* 이미지 업로드 */}
         <div>
           <label className="block text-sm font-medium text-white/50 mb-3">
-            사진 ({images.length}/12)
+            사진/동영상 ({images.length}/12)
           </label>
           
           <div className="grid grid-cols-4 gap-2">
@@ -172,23 +176,30 @@ export default function WritePostForm({ onClose, onPostCreate, tabs }: WritePost
             )}
 
             {/* 미리보기 목록 */}
-            {previews.map((preview, index) => (
-              <div key={index} className="relative aspect-square rounded-xl overflow-hidden group border border-white/10">
-                <img src={preview} alt={`preview ${index}`} className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => removeImage(index)}
-                  className="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
+            {previews.map((preview, index) => {
+              const isVideo = images[index]?.type.startsWith('video/')
+              return (
+                <div key={index} className="relative aspect-square rounded-xl overflow-hidden group border border-white/10">
+                  {isVideo ? (
+                    <video src={preview} className="w-full h-full object-cover" muted />
+                  ) : (
+                    <img src={preview} alt={`preview ${index}`} className="w-full h-full object-cover" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute top-1 right-1 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )
+            })}
           </div>
           <input 
             ref={fileInputRef}
             type="file" 
-            accept="image/*" 
+            accept="image/*,video/*" 
             multiple 
             className="hidden" 
             onChange={handleImageChange}

@@ -3,9 +3,11 @@ import DashboardOverlay from "@/components/dashboard/DashboardOverlay"
 import Scene from "@/components/canvas/Scene"
 import CommunitySidebar from "@/components/community/CommunitySidebar"
 import LoginModal from "@/components/auth/LoginModal"
+import SettingsSidebar from "@/components/dashboard/SettingsSidebar"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/store/useAuth"
 import { useStore } from "@/store/useStore"
+import { Toaster } from "sonner"
 
 function App() {
   const setSession = useAuth((state) => state.setSession)
@@ -44,6 +46,12 @@ function App() {
         isOpen={isLoginModalOpen} 
         onClose={closeLoginModal} 
       />
+
+      {/* Settings Sidebar */}
+      <SettingsSidebar />
+
+      {/* Global Toaster */}
+      <Toaster position="top-center" richColors />
     </div>
   )
 }

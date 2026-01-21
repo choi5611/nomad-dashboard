@@ -1,6 +1,38 @@
 import { useState } from "react"
 import { X, Github, Mail } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { toast } from "sonner"
+
+const getErrorMessage = (error: any) => {
+  const message = error.message || ""
+  const status = error.status
+
+  if (message.includes("Invalid login credentials")) {
+    return "이메일 또는 비밀번호가 잘못되었습니다."
+  }
+  if (message.includes("Email not confirmed")) {
+    return "이메일 인증이 완료되지 않았습니다. 메일함을 확인해주세요."
+  }
+  if (message.includes("User already registered") || message.includes("Email already in use")) {
+    return "이미 가입된 이메일 주소입니다."
+  }
+  if (message.includes("Password should be at least 6 characters")) {
+    return "비밀번호는 최소 6자 이상이어야 합니다."
+  }
+  if (message.includes("Too many requests")) {
+    return "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."
+  }
+
+  // HTTP 상태 코드별 기본 메시지
+  switch (status) {
+    case 400: return "잘못된 요청입니다. 입력값을 확인해주세요. (400)"
+    case 401: return "인증에 실패했습니다. (401)"
+    case 404: return "사용자를 찾을 수 없습니다. (404)"
+    case 422: return "유효하지 않은 데이터입니다. (422)"
+    case 500: return "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요. (500)"
+    default: return message || "알 수 없는 오류가 발생했습니다."
+  }
+}
 
 interface LoginModalProps {
   isOpen: boolean
@@ -25,14 +57,17 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       if (isSignUp) {
         const { error } = await supabase.auth.signUp({ email, password })
         if (error) throw error
-        alert("확인 이메일을 보냈습니다! 메일함을 확인해주세요.")
+        toast.success("확인 이메일을 보냈습니다!", {
+          description: "메일함을 확인하여 계정을 활성화해주세요."
+        })
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
+        toast.success("로그인되었습니다.")
         onClose()
       }
     } catch (error: any) {
-      alert(error.message)
+      toast.error(getErrorMessage(error))
     } finally {
       setLoading(false)
     }
@@ -48,7 +83,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       })
       if (error) throw error
     } catch (error: any) {
-      alert(error.message)
+      toast.error(getErrorMessage(error))
     }
   }
 

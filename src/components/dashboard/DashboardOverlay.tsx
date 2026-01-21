@@ -7,7 +7,8 @@ import { useAuth } from "@/store/useAuth"
 export default function DashboardOverlay() {
   const selectedCity = useStore((state) => state.selectedCity)
   const openLoginModal = useStore((state) => state.openLoginModal)
-  const { user, profile, signOut } = useAuth()
+  const openSettings = useStore((state) => state.openSettings)
+  const { user, profile } = useAuth()
   return (
     <div className="absolute inset-0 z-10 pointer-events-none p-6 flex flex-col justify-between">
       {/* Top Bar: Header & Status */}
@@ -28,11 +29,11 @@ export default function DashboardOverlay() {
           {/* Auth Button */}
           {user ? (
             <button 
-              onClick={() => signOut()}
-              className="flex items-center gap-2 p-1.5 pr-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all group"
+              onClick={() => openSettings()}
+              className="flex items-center gap-2 p-1.5 pr-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all group pointer-events-auto"
             >
               <img 
-                src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`} 
+                src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`} 
                 alt="Profile"
                 className="w-8 h-8 rounded-full border border-cyan-500/30"
               />
