@@ -6,6 +6,10 @@ import { useAuth } from "@/store/useAuth"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useQueryClient } from "@tanstack/react-query"
+import Cropper from "react-easy-crop"
+import { getCroppedImg } from "@/utils/cropImage"
+import { v4 as uuidv4 } from "uuid"
+import { Camera } from "lucide-react"
 
 export default function SettingsSidebar() {
   const { isSettingsOpen, closeSettings } = useStore()
@@ -14,6 +18,13 @@ export default function SettingsSidebar() {
   
   const [username, setUsername] = useState("")
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+
+  // Cropping state
+  const [imageSrc, setImageSrc] = useState<string | null>(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null)
 
   const handleSignOut = async () => {
     try {
@@ -88,6 +99,68 @@ export default function SettingsSidebar() {
     }
   }
 
+  const onCropComplete = (_croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels)
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0]
+      const imageDataUrl = URL.createObjectURL(file)
+      setImageSrc(imageDataUrl)
+    }
+  }
+
+  const handleAvatarUpload = async () => {
+    if (!imageSrc || !croppedAreaPixels || !user) return
+
+    setUploading(true)
+    try {
+      const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels)
+      if (!croppedImageBlob) throw new Error("이미지 크롭 실패")
+
+      const fileName = `${user.id}/${uuidv4()}.jpg`
+      const filePath = fileName
+
+      // 1. Storage 업로드 (avatars 버킷 사용)
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, croppedImageBlob, {
+          contentType: "image/jpeg",
+          upsert: true,
+        })
+
+      if (uploadError) throw uploadError
+
+      // 2. Public URL 가져오기
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath)
+
+      // 3. Profiles 테이블 업데이트
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id)
+
+      if (updateError) throw updateError
+
+      await fetchProfile(user.id)
+      
+      // 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ["posts"] })
+      queryClient.invalidateQueries({ queryKey: ["comments"] })
+
+      toast.success("프로필 이미지가 변경되었습니다.")
+      setImageSrc(null) // 크롭 모달 닫기
+    } catch (error: any) {
+      console.error(error)
+      toast.error("이미지 업로드 실패: " + error.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   return (
     <AnimatePresence>
       {isSettingsOpen && (
@@ -130,14 +203,88 @@ export default function SettingsSidebar() {
               {/* Profile Image Preview */}
               <div className="flex flex-col items-center">
                 <div className="relative group">
-                  <img
-                    src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`}
-                    alt="Profile"
-                    className="w-24 h-24 rounded-full border-4 border-cyan-500/20 shadow-xl"
+                  <div className="w-24 h-24 rounded-full border-4 border-cyan-500/20 shadow-xl overflow-hidden relative">
+                    <img
+                      src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id}`}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                    <label 
+                      className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      htmlFor="avatar-upload"
+                    >
+                      <Camera className="w-6 h-6 text-white" />
+                    </label>
+                  </div>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                    disabled={uploading}
                   />
                 </div>
                 <p className="mt-4 text-sm text-white/40">{user?.email}</p>
               </div>
+
+              {/* Cropper Modal Overlay */}
+              {imageSrc && (
+                <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4">
+                  <div className="relative w-full max-w-md aspect-square bg-slate-900 rounded-2xl overflow-hidden">
+                    <Cropper
+                      image={imageSrc}
+                      crop={crop}
+                      zoom={zoom}
+                      aspect={1}
+                      onCropChange={setCrop}
+                      onCropComplete={onCropComplete}
+                      onZoomChange={setZoom}
+                      cropShape="round"
+                      showGrid={false}
+                    />
+                  </div>
+                  
+                  <div className="mt-8 w-full max-w-md space-y-6">
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-xs text-white/40 px-1">
+                            <span>확대/축소</span>
+                            <span>{Math.round(zoom * 100)}%</span>
+                        </div>
+                        <input
+                            type="range"
+                            value={zoom}
+                            min={1}
+                            max={3}
+                            step={0.1}
+                            aria-labelledby="Zoom"
+                            onChange={(e) => setZoom(Number(e.target.value))}
+                            className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                        />
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setImageSrc(null)}
+                        className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white font-medium rounded-xl transition-all"
+                      >
+                        취소
+                      </button>
+                      <button
+                        onClick={handleAvatarUpload}
+                        disabled={uploading}
+                        className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-cyan-900/20 flex items-center justify-center gap-2"
+                      >
+                        {uploading ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          "적용하기"
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Edit Form */}
               <form onSubmit={handleUpdateProfile} className="space-y-6">

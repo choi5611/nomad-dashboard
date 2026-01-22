@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { Heart, MessageCircle, ChevronLeft, ChevronRight, Layers, Trash2 } from "lucide-react"
 import { useAuth } from "@/store/useAuth"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import CommentSection from "./CommentSection"
 import ConfirmModal from "../ui/ConfirmModal"
+import HashtagText from "../ui/HashtagText"
 // 이 컴포넌트가 받아서 사용할 데이터들의 "타입"을 정의해줍니다.
 interface PostCardProps {
   post: {
@@ -24,15 +26,33 @@ interface PostCardProps {
   typeIcon: any
   typeLabel: string
   onDelete?: () => void
+  onTagClick?: (tag: string) => void
 }
-export default function PostCard({ post, typeIcon: TypeIcon, typeLabel, onDelete }: PostCardProps) {
+
+const variants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 300 : -300,
+    opacity: 0
+  }),
+  center: {
+    zIndex: 1,
+    x: 0,
+    opacity: 1
+  },
+  exit: (direction: number) => ({
+    zIndex: 0,
+    x: direction < 0 ? 300 : -300,
+    opacity: 0
+  })
+}
+export default function PostCard({ post, typeIcon: TypeIcon, typeLabel, onDelete, onTagClick }: PostCardProps) {
   const user = useAuth((state) => state.user)
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isLiked, setIsLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post.likes_count || 0)
   const [showComments, setShowComments] = useState(false)
   const [commentCount, setCommentCount] = useState(post.comments_count || 0)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [[page, direction], setPage] = useState([0, 0])
   
   const authorName = post.profiles?.username || "익명"
   const avatarUrl = post.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.id}`
@@ -116,14 +136,11 @@ export default function PostCard({ post, typeIcon: TypeIcon, typeLabel, onDelete
   }
 
   const images = post.image_urls || []
+  const currentImageIndex = Math.abs(page % images.length)
   const hasMultipleImages = images.length > 1
 
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length)
-  }
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)
+  const paginate = (newDirection: number) => {
+    setPage([page + newDirection, newDirection])
   }
 
   return (
@@ -153,53 +170,71 @@ export default function PostCard({ post, typeIcon: TypeIcon, typeLabel, onDelete
         </div>
       </div>
       {/* Content */}
-      <p className="text-white/90 text-sm leading-relaxed mb-3 whitespace-pre-wrap">{post.content}</p>
+      <div className="text-white/90 text-sm leading-relaxed mb-3">
+        <HashtagText text={post.content} onTagClick={onTagClick} />
+      </div>
       {/* Image */}
       {/* Images Carousel */}
       {images.length > 0 && (
-        <div className="relative mb-3 group select-none">
-          <div className="aspect-square w-full rounded-lg overflow-hidden bg-black/20 relative">
-             {(() => {
-                const url = images[currentImageIndex]
-                const isVideo = url.toLowerCase().match(/\.(mp4|mov|webm|ogv|m4v)/) || url.includes('/post-videos/')
-                
-                if (isVideo) {
+        <div className="relative mb-3 group select-none h-[300px]">
+          <div className="w-full h-full rounded-lg overflow-hidden bg-black/20 relative">
+            <AnimatePresence initial={false} custom={direction}>
+              <motion.div
+                key={page}
+                custom={direction}
+                variants={variants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{
+                  x: { type: "spring", stiffness: 300, damping: 30 },
+                  opacity: { duration: 0.2 }
+                }}
+                className="absolute inset-0 w-full h-full"
+              >
+                {(() => {
+                  const url = images[currentImageIndex]
+                  const isVideo = url.toLowerCase().match(/\.(mp4|mov|webm|ogv|m4v)/) || url.includes('/post-videos/')
+                  
+                  if (isVideo) {
+                    return (
+                      <div className="w-full h-full flex items-center justify-center bg-black">
+                         <video
+                            src={url}
+                            className="w-full h-full object-cover"
+                            controls={false}
+                            autoPlay
+                            muted
+                            loop
+                            playsInline
+                         />
+                      </div>
+                    )
+                  }
                   return (
-                    <div className="w-full h-full flex items-center justify-center bg-black">
-                       <video
-                          src={url}
-                          className="w-full h-full object-cover"
-                          controls={false}
-                          autoPlay
-                          muted
-                          loop
-                          playsInline
-                       />
-                    </div>
+                    <img 
+                      src={url} 
+                      alt={`post-image-${currentImageIndex}`} 
+                      className="w-full h-full object-cover"
+                    />
                   )
-                }
-                return (
-                  <img 
-                    src={url} 
-                    alt={`post-image-${currentImageIndex}`} 
-                    className="w-full h-full object-cover transition-opacity duration-300"
-                  />
-                )
-             })()}
+                })()}
+              </motion.div>
+            </AnimatePresence>
           </div>
 
           {/* Navigation Buttons */}
           {hasMultipleImages && (
             <>
               <button 
-                onClick={(e) => { e.stopPropagation(); prevImage(); }}
-                className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/50 text-white/90 hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => { e.stopPropagation(); paginate(-1); }}
+                className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/50 text-white/90 hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity z-10"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <button 
-                onClick={(e) => { e.stopPropagation(); nextImage(); }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/50 text-white/90 hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => { e.stopPropagation(); paginate(1); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/50 text-white/90 hover:bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity z-10"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
@@ -233,7 +268,12 @@ export default function PostCard({ post, typeIcon: TypeIcon, typeLabel, onDelete
             isLiked ? "text-pink-500" : "hover:text-pink-400"
           }`}
         >
-          <Heart className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} /> 
+          <motion.div
+            animate={isLiked ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Heart className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} /> 
+          </motion.div>
           {likeCount}
         </button>
         <button 

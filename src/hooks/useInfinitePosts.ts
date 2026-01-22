@@ -4,13 +4,14 @@ import { supabase } from "@/lib/supabase"
 interface UseInfinitePostsProps {
   category: string
   cityId?: string
+  hashtag?: string | null
 }
 
 const POSTS_PER_PAGE = 10
 
-export function useInfinitePosts({ category, cityId }: UseInfinitePostsProps) {
+export function useInfinitePosts({ category, cityId, hashtag }: UseInfinitePostsProps) {
   return useInfiniteQuery({
-    queryKey: ["posts", category, cityId],
+    queryKey: ["posts", category, cityId, hashtag],
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase
         .from("posts")
@@ -29,6 +30,10 @@ export function useInfinitePosts({ category, cityId }: UseInfinitePostsProps) {
 
       if (category !== "all") {
         query = query.eq("category", category)
+      }
+
+      if (hashtag) {
+        query = query.ilike("content", `%#${hashtag}%`)
       }
 
       const { data, error } = await query

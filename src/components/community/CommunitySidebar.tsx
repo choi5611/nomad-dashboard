@@ -32,6 +32,7 @@ export default function CommunitySidebar() {
   const closeSidebar = useStore((state) => state.closeSidebar)
   const [activeTab, setActiveTab] = useState("all")
   const [isWriting, setIsWriting] = useState(false)
+  const [selectedTag, setSelectedTag] = useState<string | null>(null)
   
   const { ref, inView } = useInView()
   
@@ -44,7 +45,8 @@ export default function CommunitySidebar() {
     refetch 
   } = useInfinitePosts({ 
     category: activeTab, 
-    cityId: selectedCity?.name?.toLowerCase() // 이름 기반 매칭 주의: DB와 일치해야 함
+    cityId: selectedCity?.name?.toLowerCase(),
+    hashtag: selectedTag
   })
 
   useEffect(() => {
@@ -102,6 +104,24 @@ export default function CommunitySidebar() {
         ))}
       </div>
 
+      {/* Tag Badge */}
+      {selectedTag && (
+        <div className="px-4 py-2 bg-cyan-500/10 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-cyan-400">TAG:</span>
+            <span className="px-2 py-0.5 bg-cyan-500 text-white text-xs font-bold rounded-full">
+              #{selectedTag}
+            </span>
+          </div>
+          <button 
+            onClick={() => setSelectedTag(null)}
+            className="text-xs text-white/40 hover:text-white transition-colors"
+          >
+            필터 초기화
+          </button>
+        </div>
+      )}
+
       {/* Posts */}
       <div className="overflow-y-auto h-[calc(100%-120px)] p-4 space-y-4 no-scrollbar">
         {status === 'pending' ? (
@@ -122,6 +142,7 @@ export default function CommunitySidebar() {
                   typeIcon={TypeIcon} 
                   typeLabel={typeLabel} 
                   onDelete={() => refetch()}
+                  onTagClick={(tag) => setSelectedTag(tag)}
                 />
               )
             })}
