@@ -83,33 +83,84 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
     resetUnread(chat.type === 'dm' ? 'dm' : 'room', chat.id)
 
     // 2. 실시간 구독
+    const filterConfig = chat.type === 'dm' 
+      ? `receiver_id=eq.${user.id}` 
+      : `room_id=eq.${chat.id}`
+    
+    console.log('🔔 Setting up realtime subscription:', {
+      chatType: chat.type,
+      chatId: chat.id,
+      userId: user.id,
+      filter: filterConfig
+    })
+
     const channel = supabase
       .channel(`chat:${chat.id}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
-        table: 'direct_messages'
+        table: 'direct_messages',
+        filter: filterConfig
       }, (payload) => {
         const newMessage = payload.new as DMMessage
         
-        // 필터링: 현재 채팅방과 관련된 메시지인지 확인하고 다른 사람의 메시지만 추가
-        const isMatch = chat.type === 'dm'
-          ? (newMessage.sender_id === chat.id && newMessage.receiver_id === user.id)
-          : (newMessage.room_id === chat.id)
-
-        if (isMatch && newMessage.sender_id !== user.id) {
-          // 실시간 수신 시 즉시 리셋 (현재 보고 있으므로)
-          useStore.getState().resetUnread(chat.type === 'dm' ? 'dm' : 'room', chat.id)
-          
-          setMessages(prev => {
-            if (prev.some(m => m.id === newMessage.id)) return prev
-            return [...prev, newMessage]
-          })
+        console.log('📨 Received realtime message:', {
+          messageId: newMessage.id,
+          senderId: newMessage.sender_id,
+          currentUserId: user.id,
+          content: newMessage.content,
+          roomId: newMessage.room_id,
+          receiverId: newMessage.receiver_id
+        })
+        
+        // DM의 경우 추가 필터링 (sender가 chat.id인지 확인)
+        if (chat.type === 'dm' && newMessage.sender_id !== chat.id) {
+          console.log('❌ Filtered out: DM sender mismatch')
+          return
         }
+        
+        // 본인이 보낸 메시지는 이미 낙관적 업데이트로 추가되어 있음
+        if (newMessage.sender_id === user.id) {
+          console.log('✅ Own message - replacing optimistic update')
+          // 낙관적 업데이트의 임시 메시지를 실제 메시지로 교체
+          setMessages(prev => {
+            const tempMsgIndex = prev.findIndex(m => 
+              m.sender_id === user.id && 
+              m.content === newMessage.content &&
+              Math.abs(new Date(m.created_at).getTime() - new Date(newMessage.created_at).getTime()) < 5000
+            )
+            
+            if (tempMsgIndex !== -1) {
+              // 임시 메시지를 실제 메시지로 교체
+              const updated = [...prev]
+              updated[tempMsgIndex] = newMessage
+              return updated
+            }
+            return prev
+          })
+          return
+        }
+
+        // 다른 사람의 메시지만 추가
+        console.log('✅ Adding message from other user')
+        useStore.getState().resetUnread(chat.type === 'dm' ? 'dm' : 'room', chat.id)
+        
+        setMessages(prev => {
+          // 중복 체크
+          if (prev.some(m => m.id === newMessage.id)) {
+            console.log('⚠️ Duplicate message, skipping')
+            return prev
+          }
+          console.log('✅ Message added to state')
+          return [...prev, newMessage]
+        })
       })
-      .subscribe()
+      .subscribe((status) => {
+        console.log('🔌 Subscription status:', status)
+      })
 
     return () => {
+      console.log('🔌 Unsubscribing from channel:', chat.id)
       supabase.removeChannel(channel)
     }
   }, [user, chat.id, chat.type])
@@ -157,10 +208,15 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
       }
 
       const { error } = await supabase.from('direct_messages').insert(insertData)
-      if (error) throw error
-    } catch (err) {
+      if (error) {
+        console.error('❌ Supabase Insert Error:', error)
+        console.error('📦 Insert Data:', insertData)
+        throw error
+      }
+    } catch (err: any) {
+      console.error('❌ Message Send Failed:', err)
       setMessages(prev => prev.filter(m => m.id !== tempId))
-      toast.error("전송 실패")
+      toast.error(`전송 실패: ${err.message || '알 수 없는 오류'}`)
     }
   }
 
