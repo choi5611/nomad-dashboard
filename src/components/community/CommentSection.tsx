@@ -7,6 +7,7 @@ import { useInView } from "react-intersection-observer"
 import { useQueryClient } from "@tanstack/react-query"
 import { useInfiniteComments } from "@/hooks/useInfiniteComments"
 import ConfirmModal from "../ui/ConfirmModal"
+import UserProfileModal from "./UserProfileModal"
 
 interface Comment {
   id: string
@@ -44,6 +45,10 @@ export default function CommentSection({ postId, postAuthorId, onCommentCountCha
   const [replyTo, setReplyTo] = useState<Comment | null>(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null)
+  
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  
   const inputRef = useRef<HTMLInputElement>(null)
   
   // 마운트 시 자동 포커스
@@ -137,6 +142,11 @@ export default function CommentSection({ postId, postAuthorId, onCommentCountCha
     setIsDeleteModalOpen(true)
   }
 
+  const openProfile = (id: string) => {
+    setSelectedUserId(id)
+    setIsProfileOpen(true)
+  }
+
   const handleReplyClick = (comment: Comment) => {
     setReplyTo(comment)
     const displayName = comment.author.username || "사용자"
@@ -176,6 +186,7 @@ export default function CommentSection({ postId, postAuthorId, onCommentCountCha
                   currentUserId={user?.id}
                   onReply={() => handleReplyClick(comment)}
                   onDelete={() => openDeleteModal(comment.id)}
+                  onAvatarClick={() => openProfile(comment.author.id)}
                 />
                 {/* 대댓글 */}
                 <div className="pl-8 space-y-2 border-l-2 border-white/5 ml-2">
@@ -186,6 +197,7 @@ export default function CommentSection({ postId, postAuthorId, onCommentCountCha
                       currentUserId={user?.id}
                       onReply={() => handleReplyClick(reply)}
                       onDelete={() => openDeleteModal(reply.id)}
+                      onAvatarClick={() => openProfile(reply.author.id)}
                     />
                   ))}
                 </div>
@@ -241,15 +253,25 @@ export default function CommentSection({ postId, postAuthorId, onCommentCountCha
         onConfirm={handleDelete}
         onClose={() => setIsDeleteModalOpen(false)}
       />
+
+      {/* User Profile Modal */}
+      {selectedUserId && (
+        <UserProfileModal 
+          userId={selectedUserId}
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+        />
+      )}
     </div>
   )
 }
 
-function CommentItem({ comment, currentUserId, onReply, onDelete }: { 
+function CommentItem({ comment, currentUserId, onReply, onDelete, onAvatarClick }: { 
   comment: Comment, 
   currentUserId?: string,
   onReply: () => void,
-  onDelete: () => void
+  onDelete: () => void,
+  onAvatarClick: () => void
 }) {
   const isAuthor = currentUserId === comment.author.id
   const displayName = comment.author.username || "사용자"
@@ -273,11 +295,17 @@ function CommentItem({ comment, currentUserId, onReply, onDelete }: {
     <div className="flex gap-3 group">
       <img 
         src={comment.author.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.author.id}`} 
-        className="w-8 h-8 rounded-full bg-slate-700 mt-1" 
+        className="w-8 h-8 rounded-full bg-slate-700 mt-1 cursor-pointer hover:ring-2 hover:ring-cyan-500/50 transition-all" 
+        onClick={onAvatarClick}
       />
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-sm font-medium text-white">{displayName}</span>
+          <span 
+            className="text-sm font-medium text-white cursor-pointer hover:text-cyan-400 transition-colors"
+            onClick={onAvatarClick}
+          >
+            {displayName}
+          </span>
           <span className="text-xs text-white/40">{new Date(comment.created_at).toLocaleDateString()}</span>
         </div>
         <p className="text-sm text-white/80 leading-relaxed break-words">

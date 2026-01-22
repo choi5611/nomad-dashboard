@@ -106,6 +106,63 @@ function App() {
     detectAndSetInitialLocation()
   }
 
+  const { user } = useAuth()
+
+  // 실시간 메시지 감지를 통한 글로벌 알림 카운트
+  useEffect(() => {
+    if (!user) return
+
+    const { incrementUnread } = useStore.getState()
+    const currentUserId = user.id
+
+    // 1. 시티 채팅 구독 (현재 선택된 도시 위주)
+    const cityChannel = supabase.channel('global-chat-tracker')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages'
+      }, (payload) => {
+        const { isChatOpen, selectedCity, activeTab } = useStore.getState()
+        // 내가 보낸 거 아니고 + (채팅창이 닫혀있거나 OR 다른 탭이거나 OR 다른 도시거나)
+        if (payload.new.author_id !== currentUserId) {
+           const isVisible = isChatOpen && activeTab === 'city' && selectedCity?.name.toLowerCase() === payload.new.city_id
+           if (!isVisible) incrementUnread('city')
+        }
+      })
+      .subscribe()
+
+    // 2. DM/룸 채팅 구독
+    const dmChannel = supabase.channel('global-dm-tracker')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'direct_messages'
+      }, (payload) => {
+        const { isChatOpen, activeChat, activeTab } = useStore.getState()
+        if (payload.new.sender_id !== currentUserId) {
+          // DM인 경우
+          if (payload.new.receiver_id === currentUserId) {
+            const isVisible = isChatOpen && activeTab === 'friends' && activeChat?.type === 'dm' && activeChat?.id === payload.new.sender_id
+            if (!isVisible) incrementUnread('dm', payload.new.sender_id)
+          } 
+          // 룸(그룹/오픈)인 경우
+          else if (payload.new.room_id) {
+            const isOpenChat = ['global-lounge', 'nomad-tips'].includes(payload.new.room_id)
+            const targetTab = isOpenChat ? 'open' : 'friends'
+            const isVisible = isChatOpen && activeTab === targetTab && activeChat?.id === payload.new.room_id
+            
+            if (!isVisible) incrementUnread('room', payload.new.room_id)
+          }
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(cityChannel)
+      supabase.removeChannel(dmChannel)
+    }
+  }, [user])
+
   const isLoginModalOpen = useStore((state) => state.isLoginModalOpen)
   const closeLoginModal = useStore((state) => state.closeLoginModal)
 

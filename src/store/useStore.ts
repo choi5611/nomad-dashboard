@@ -28,6 +28,17 @@ interface AppState {
   isChatOpen: boolean
   toggleChat: () => void
   closeChat: () => void
+  activeChat: { type: 'dm' | 'group' | 'open', id: string, name: string, avatar_url?: string } | null
+  setActiveChat: (chat: { type: 'dm' | 'group' | 'open', id: string, name: string, avatar_url?: string } | null) => void
+  unreadState: {
+    city: number,
+    dms: Record<string, number>,
+    rooms: Record<string, number>
+  }
+  incrementUnread: (type: 'city' | 'dm' | 'room', id?: string) => void
+  resetUnread: (type: 'city' | 'dm' | 'room', id?: string) => void
+  activeTab: 'city' | 'friends' | 'open'
+  setActiveTab: (tab: 'city' | 'friends' | 'open') => void
 }
 
 const AUTO_ROTATE_DELAY = 5000 // 5초 후 다시 회전
@@ -71,4 +82,35 @@ export const useStore = create<AppState>((set, get) => ({
   isChatOpen: false,
   toggleChat: () => set((state) => ({ isChatOpen: !state.isChatOpen })),
   closeChat: () => set({ isChatOpen: false }),
+  activeChat: null,
+  setActiveChat: (chat) => set({ activeChat: chat }),
+  unreadState: { city: 0, dms: {}, rooms: {} },
+  incrementUnread: (type, id) => set((state) => {
+    const newState = { ...state.unreadState }
+    if (type === 'city') {
+      newState.city = Math.min(99, newState.city + 1)
+    } else if (type === 'dm' && id) {
+      newState.dms = { ...newState.dms, [id]: Math.min(99, (newState.dms[id] || 0) + 1) }
+    } else if (type === 'room' && id) {
+      newState.rooms = { ...newState.rooms, [id]: Math.min(99, (newState.rooms[id] || 0) + 1) }
+    }
+    return { unreadState: newState }
+  }),
+  resetUnread: (type, id) => set((state) => {
+    const newState = { ...state.unreadState }
+    if (type === 'city') {
+      newState.city = 0
+    } else if (type === 'dm' && id) {
+      newState.dms = { ...newState.dms, [id]: 0 }
+    } else if (type === 'room' && id) {
+      newState.rooms = { ...newState.rooms, [id]: 0 }
+    } else if (type === 'dm') { // 전체 초기화 (탭 클릭 시 등)
+      newState.dms = {}
+    } else if (type === 'room') {
+      newState.rooms = {}
+    }
+    return { unreadState: newState }
+  }),
+  activeTab: 'city',
+  setActiveTab: (tab) => set({ activeTab: tab }),
 }))

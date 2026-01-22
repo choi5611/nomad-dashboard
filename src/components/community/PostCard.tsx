@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import CommentSection from "./CommentSection"
 import ConfirmModal from "../ui/ConfirmModal"
 import HashtagText from "../ui/HashtagText"
+import UserProfileModal from "./UserProfileModal"
 // 이 컴포넌트가 받아서 사용할 데이터들의 "타입"을 정의해줍니다.
 interface PostCardProps {
   post: {
@@ -52,6 +53,7 @@ export default function PostCard({ post, typeIcon: TypeIcon, typeLabel, onDelete
   const [showComments, setShowComments] = useState(false)
   const [commentCount, setCommentCount] = useState(post.comments_count || 0)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [[page, direction], setPage] = useState([0, 0])
   
   const authorName = post.profiles?.username || "익명"
@@ -160,11 +162,21 @@ export default function PostCard({ post, typeIcon: TypeIcon, typeLabel, onDelete
     <div className="bg-white/5 rounded-xl p-4 border border-white/10 hover:border-cyan-500/30 transition-colors group relative">
       {/* Post Header */}
       <div className="flex items-center gap-3 mb-3">
-        <img src={avatarUrl} alt={authorName} className="w-10 h-10 rounded-full bg-slate-700" />
+        <img 
+          src={avatarUrl} 
+          alt={authorName} 
+          className="w-10 h-10 rounded-full bg-slate-700 cursor-pointer hover:ring-2 hover:ring-cyan-500/50 transition-all" 
+          onClick={() => setIsProfileOpen(true)}
+        />
         <div className="flex-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="font-medium text-white">{authorName}</span>
+              <span 
+                className="font-medium text-white cursor-pointer hover:text-cyan-400 transition-colors"
+                onClick={() => setIsProfileOpen(true)}
+              >
+                {authorName}
+              </span>
               <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">
                 <TypeIcon className="w-3 h-3" />
                 {typeLabel}
@@ -314,6 +326,13 @@ export default function PostCard({ post, typeIcon: TypeIcon, typeLabel, onDelete
         message="정말로 이 게시글을 삭제하시겠습니까? 삭제된 글은 복구할 수 없습니다."
         onConfirm={handleDelete}
         onClose={() => setIsDeleteModalOpen(false)}
+      />
+
+      {/* User Profile Modal */}
+      <UserProfileModal 
+        userId={post.author_id}
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
       />
     </div>
   )

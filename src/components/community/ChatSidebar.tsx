@@ -1,10 +1,14 @@
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Send, Activity } from "lucide-react"
+import { X, Send, Activity, Sparkles } from "lucide-react"
 import { useStore } from "@/store/useStore"
 import { useAuth } from "@/store/useAuth"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
+import UserProfileModal from "./UserProfileModal"
+import { Users, MapPin } from "lucide-react"
+import FriendsList from "./FriendsList"
+import DirectMessageView from "./DirectMessageView"
 
 interface Message {
   id: string;
@@ -29,11 +33,15 @@ const getFlagEmoji = (countryCode: string) => {
 }
 
 export default function ChatSidebar() {
-  const { isChatOpen, closeChat, selectedCity, isSidebarOpen } = useStore()
+  const { isChatOpen, closeChat, selectedCity, isSidebarOpen, activeChat, setActiveChat } = useStore()
   const { user, profile } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState("")
   const [onlineCount, setOnlineCount] = useState(1)
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const { unreadState, resetUnread, activeTab, setActiveTab } = useStore()
+  
   const scrollRef = useRef<HTMLDivElement>(null)
   const bufferRef = useRef<Message[]>([])
 
@@ -141,6 +149,11 @@ export default function ChatSidebar() {
     }
   }, [messages])
 
+  const openProfile = (id: string) => {
+    setSelectedProfileId(id)
+    setIsProfileOpen(true)
+  }
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user || !inputValue.trim() || !selectedCity) return
@@ -202,20 +215,77 @@ export default function ChatSidebar() {
         >
           {/* Header */}
           <div className="p-4 border-b border-cyan-500/20 bg-cyan-500/5">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                    <div className="relative">
-                        <Activity className="w-5 h-5 text-cyan-400 animate-pulse" />
-                        <div className="absolute inset-0 bg-cyan-400/20 blur-sm rounded-full animate-ping" />
-                    </div>
-                    <h2 className="text-lg font-bold text-white tracking-widest uppercase flex items-center gap-2">
-                        Comms Link <span className="text-[10px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded border border-cyan-500/30 font-mono">
-                          {onlineCount} NOMADS IN
-                        </span>
+                    <Activity className="w-5 h-5 text-cyan-400 animate-pulse" />
+                    <h2 className="text-lg font-bold text-white tracking-widest uppercase">
+                        Terminal
                     </h2>
                 </div>
                 <button onClick={closeChat} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition-colors">
                     <X className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* Tab Switcher */}
+            <div className="flex gap-2 p-1 bg-black/20 rounded-xl border border-white/5">
+                <button
+                    onClick={() => {
+                        setActiveTab('city')
+                        setActiveChat(null)
+                        resetUnread('city')
+                    }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold transition-all relative ${
+                        activeTab === 'city' 
+                        ? "bg-cyan-400 text-slate-900 shadow-lg shadow-cyan-500/20" 
+                        : "text-white/40 hover:bg-white/5"
+                    }`}
+                >
+                    <MapPin className="w-3.5 h-3.5" />
+                    CITY HUB
+                    {activeTab !== 'city' && unreadState.city > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] flex items-center justify-center rounded-full border border-slate-900">
+                            {unreadState.city > 99 ? '99+' : unreadState.city}
+                        </span>
+                    )}
+                </button>
+                <button
+                    onClick={() => {
+                        setActiveTab('friends')
+                        setActiveChat(null)
+                    }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold transition-all relative ${
+                        activeTab === 'friends' 
+                        ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
+                        : "text-white/40 hover:bg-white/5"
+                    }`}
+                >
+                    <Users className="w-3.5 h-3.5" />
+                    FRIENDS
+                    {activeTab !== 'friends' && (Object.values(unreadState.dms).reduce((a,b)=>a+b,0) + Object.entries(unreadState.rooms).filter(([id]) => !['global-lounge', 'nomad-tips'].includes(id)).reduce((a,b)=>a+b[1],0)) > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] flex items-center justify-center rounded-full border border-slate-900">
+                            {(Object.values(unreadState.dms).reduce((a,b)=>a+b,0) + Object.entries(unreadState.rooms).filter(([id]) => !['global-lounge', 'nomad-tips'].includes(id)).reduce((a,b)=>a+b[1],0)) > 99 ? '99+' : (Object.values(unreadState.dms).reduce((a,b)=>a+b,0) + Object.entries(unreadState.rooms).filter(([id]) => !['global-lounge', 'nomad-tips'].includes(id)).reduce((a,b)=>a+b[1],0))}
+                        </span>
+                    )}
+                </button>
+                <button
+                    onClick={() => {
+                        setActiveTab('open')
+                        setActiveChat(null)
+                    }}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold transition-all relative ${
+                        activeTab === 'open' 
+                        ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20" 
+                        : "text-white/40 hover:bg-white/5"
+                    }`}
+                >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    OPEN
+                    {activeTab !== 'open' && Object.entries(unreadState.rooms).filter(([id]) => ['global-lounge', 'nomad-tips'].includes(id)).reduce((a,b)=>a+b[1],0) > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] flex items-center justify-center rounded-full border border-slate-900">
+                            {Object.entries(unreadState.rooms).filter(([id]) => ['global-lounge', 'nomad-tips'].includes(id)).reduce((a,b)=>a+b[1],0) > 99 ? '99+' : Object.entries(unreadState.rooms).filter(([id]) => ['global-lounge', 'nomad-tips'].includes(id)).reduce((a,b)=>a+b[1],0)}
+                        </span>
+                    )}
                 </button>
             </div>
             <p className="text-[10px] text-cyan-400/50 font-mono tracking-tighter truncate">
@@ -224,59 +294,107 @@ export default function ChatSidebar() {
           </div>
 
           {/* Messages Area */}
-          <div 
-            ref={scrollRef}
-            className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar scroll-smooth"
-          >
-            {messages.map((msg, idx) => (
-                <MessageItem key={msg.id || idx} message={msg} isOwn={msg.author_id === user?.id} />
-            ))}
-          </div>
-
-          {/* Input Area */}
-          <div className="p-4 border-t border-white/10 bg-black/20">
-            <form onSubmit={handleSendMessage} className="relative">
-                <input
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    placeholder="Enter message..."
-                    autoFocus
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/50 transition-all font-mono text-sm leading-none"
-                    disabled={!user}
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {activeChat ? (
+                <DirectMessageView 
+                    chat={activeChat} 
+                    onBack={() => setActiveChat(null)} 
                 />
-                <button 
-                    disabled={!inputValue.trim() || !user}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-cyan-400 hover:text-cyan-300 disabled:opacity-20 transition-all"
-                >
-                    <Send className="w-5 h-5" />
-                </button>
-            </form>
-            <div className="mt-3 flex items-center justify-between px-1">
-                {!user ? (
-                    <p className="text-[10px] text-red-400/60 font-mono italic">
-                        [ERR] AUTH_REQUIRED: LOGIN TO ESTABLISH LINK
-                    </p>
-                ) : (
-                    <p className="text-[9px] text-white/20 font-mono flex items-center gap-1.5 uppercase tracking-tighter">
-                        <span className="w-1 h-1 bg-cyan-500 rounded-full animate-ping" />
-                        All location data is system-verified via IP Geo-Trace
-                    </p>
-                )}
-            </div>
+            ) : activeTab === 'city' ? (
+                <>
+                    <div className="px-4 py-2 border-b border-white/5 bg-white/5">
+                         <p className="text-[10px] text-cyan-400 font-mono tracking-tighter uppercase">
+                            Secure Link to {selectedCity?.name} Terminal • {onlineCount} Active Nomads
+                        </p>
+                    </div>
+                    <div 
+                        ref={scrollRef}
+                        className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar scroll-smooth"
+                    >
+                        {messages.map((msg, idx) => (
+                            <MessageItem 
+                                key={msg.id || idx} 
+                                message={msg} 
+                                isOwn={msg.author_id === user?.id} 
+                                onProfileClick={() => openProfile(msg.author_id)}
+                            />
+                        ))}
+                    </div>
+
+                    {/* Input Area */}
+                    <div className="p-4 border-t border-white/10 bg-black/20">
+                        <form onSubmit={handleSendMessage} className="relative">
+                            <input
+                                type="text"
+                                value={inputValue}
+                                onChange={(e) => setInputValue(e.target.value)}
+                                placeholder="Enter message..."
+                                autoFocus
+                                className="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/50 transition-all font-mono text-sm leading-none"
+                                disabled={!user}
+                            />
+                            <button 
+                                disabled={!inputValue.trim() || !user}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-cyan-400 hover:text-cyan-300 disabled:opacity-20 transition-all"
+                            >
+                                <Send className="w-5 h-5" />
+                            </button>
+                        </form>
+                    </div>
+                </>
+            ) : activeTab === 'friends' ? (
+                <div className="flex-1 flex flex-col p-4 overflow-hidden">
+                    <FriendsList />
+                </div>
+            ) : (
+                <div className="flex-1 flex flex-col p-4 overflow-hidden gap-4">
+                    <h3 className="text-[10px] font-bold text-amber-500 uppercase tracking-widest flex items-center gap-2">
+                        <Sparkles className="w-3 h-3" /> Anonymous Lounges
+                    </h3>
+                    <div className="space-y-3">
+                        <OpenChatRoomItem 
+                            name="Global Nomad Lounge" 
+                            participants={128}
+                            unreadCount={unreadState.rooms['global-lounge']}
+                            onClick={() => {
+                                setActiveChat({ type: 'open', id: 'global-lounge', name: 'Global Nomad Lounge' })
+                                resetUnread('room', 'global-lounge')
+                            }}
+                        />
+                        <OpenChatRoomItem 
+                            name="Digital Nomad Tips" 
+                            participants={56}
+                            unreadCount={unreadState.rooms['nomad-tips']}
+                            onClick={() => {
+                                setActiveChat({ type: 'open', id: 'nomad-tips', name: 'Digital Nomad Tips' })
+                                resetUnread('room', 'nomad-tips')
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
           </div>
 
           {/* Hologic Grid Decor */}
           <div className="absolute inset-0 pointer-events-none opacity-[0.03] overflow-hidden">
             <div className="w-full h-full bg-[linear-gradient(to_right,#888_1px,transparent_1px),linear-gradient(to_bottom,#888_1px,transparent_1px)] bg-[size:20px_20px]" />
           </div>
+
+          {/* Context Modals */}
+          {selectedProfileId && (
+            <UserProfileModal 
+                userId={selectedProfileId}
+                isOpen={isProfileOpen}
+                onClose={() => setIsProfileOpen(false)}
+            />
+          )}
         </motion.div>
       )}
     </AnimatePresence>
   )
 }
 
-function MessageItem({ message, isOwn }: { message: Message, isOwn: boolean }) {
+function MessageItem({ message, isOwn, onProfileClick }: { message: Message, isOwn: boolean, onProfileClick: () => void }) {
     return (
         <motion.div 
             initial={{ opacity: 0, x: isOwn ? 20 : -20 }}
@@ -285,8 +403,9 @@ function MessageItem({ message, isOwn }: { message: Message, isOwn: boolean }) {
         >
             <img 
                 src={message.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${message.author_id}`}
-                className="w-8 h-8 rounded-lg border border-white/10 bg-slate-800"
+                className="w-8 h-8 rounded-lg border border-white/10 bg-slate-800 cursor-pointer hover:ring-2 hover:ring-cyan-500/50 transition-all"
                 alt="Avatar"
+                onClick={onProfileClick}
             />
             <div className={`max-w-[75%] flex flex-col ${isOwn ? 'items-end' : ''}`}>
                 <div className="flex items-center gap-1.5 mb-1">
@@ -302,7 +421,10 @@ function MessageItem({ message, isOwn }: { message: Message, isOwn: boolean }) {
                             Location Verified via IP-Trace
                         </div>
                     </div>
-                    <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest pl-1">
+                    <span 
+                        className="text-[10px] font-bold text-white/50 hover:text-white cursor-pointer uppercase tracking-widest pl-1 transition-colors"
+                        onClick={onProfileClick}
+                    >
                         {message.profiles?.username || 'Unknown'}
                     </span>
                     <span className="text-[8px] text-white/20 font-mono">
@@ -318,5 +440,25 @@ function MessageItem({ message, isOwn }: { message: Message, isOwn: boolean }) {
                 </div>
             </div>
         </motion.div>
+    )
+}
+
+function OpenChatRoomItem({ name, participants, onClick, unreadCount }: { name: string, participants: number, onClick: () => void, unreadCount?: number }) {
+    return (
+        <button 
+            onClick={onClick}
+            className="w-full p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-amber-500/30 transition-all text-left group relative"
+        >
+            <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-bold text-white group-hover:text-amber-400"># {name}</span>
+                <span className="text-[10px] text-white/20 font-mono">{participants} Active</span>
+            </div>
+            <p className="text-[10px] text-white/40 uppercase tracking-tighter">Tap to join anonymously</p>
+            {unreadCount !== undefined && unreadCount > 0 && (
+                <span className="absolute top-4 right-4 w-4 h-4 bg-red-500 text-white text-[8px] flex items-center justify-center rounded-full border border-slate-900 shadow-lg">
+                    {unreadCount}
+                </span>
+            )}
+        </button>
     )
 }

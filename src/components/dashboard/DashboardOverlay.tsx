@@ -14,7 +14,7 @@ export default function DashboardOverlay() {
   const selectedCity = useStore((state) => state.selectedCity)
   const openLoginModal = useStore((state) => state.openLoginModal)
   const openSettings = useStore((state) => state.openSettings)
-  const { isChatOpen, toggleChat, isSidebarOpen } = useStore()
+  const { isChatOpen, toggleChat, isSidebarOpen, unreadState } = useStore()
   const { user, profile, fetchProfile } = useAuth()
   const [hasVisited, setHasVisited] = useState(false)
   const [checkingIn, setCheckingIn] = useState(false)
@@ -156,13 +156,25 @@ export default function DashboardOverlay() {
           {/* Chat Toggle Button */}
           <button
             onClick={toggleChat}
-            className={`p-3 rounded-xl border transition-all pointer-events-auto shadow-lg backdrop-blur-md ${
+            className={`p-3 rounded-xl border transition-all pointer-events-auto shadow-lg backdrop-blur-md relative ${
                 isChatOpen 
                 ? "bg-cyan-500 border-cyan-400 text-white shadow-cyan-500/20" 
                 : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10"
             }`}
           >
             <MessageSquare className="w-5 h-5" />
+            {(unreadState.city + 
+              Object.values(unreadState.dms).reduce((a: number, b: number) => a + b, 0) + 
+              Object.values(unreadState.rooms).reduce((a: number, b: number) => a + b, 0)) > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-slate-900 animate-in zoom-in duration-300">
+                {(unreadState.city + 
+                  Object.values(unreadState.dms).reduce((a: number, b: number) => a + b, 0) + 
+                  Object.values(unreadState.rooms).reduce((a: number, b: number) => a + b, 0)) > 99 ? '99+' : 
+                  (unreadState.city + 
+                   Object.values(unreadState.dms).reduce((a: number, b: number) => a + b, 0) + 
+                   Object.values(unreadState.rooms).reduce((a: number, b: number) => a + b, 0))}
+              </span>
+            )}
           </button>
         </motion.div>
       </header>

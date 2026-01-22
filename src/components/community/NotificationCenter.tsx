@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Bell, Heart, MessageCircle, X, Circle } from "lucide-react"
+import { Bell, Heart, MessageCircle, X, Circle, UserPlus } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/store/useAuth"
 import { formatDistanceToNow } from "date-fns"
@@ -9,7 +9,7 @@ import { ko } from "date-fns/locale"
 interface Notification {
   id: string
   created_at: string
-  type: 'like' | 'comment'
+  type: 'like' | 'comment' | 'friend_request'
   is_read: boolean
   post_id: string
   sender_id: string
@@ -186,15 +186,19 @@ export default function NotificationCenter() {
                         <div className="absolute -bottom-1 -right-1 bg-slate-900 rounded-full p-1 border border-white/10">
                           {n.type === 'like' ? (
                             <Heart className="w-3 h-3 text-red-500 fill-red-500" />
-                          ) : (
+                          ) : n.type === 'comment' ? (
                             <MessageCircle className="w-3 h-3 text-cyan-400 fill-cyan-400" />
+                          ) : (
+                            <UserPlus className="w-3 h-3 text-indigo-400 fill-indigo-400" />
                           )}
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-white/80 leading-snug">
                           <span className="font-bold text-white">{n.sender_profile?.username || 'Somebody'}</span>님이
-                          {n.type === 'like' ? ' 게시글을 좋아합니다.' : ' 댓글을 남겼습니다.'}
+                          {n.type === 'like' ? ' 게시글을 좋아합니다.' : 
+                           n.type === 'comment' ? ' 댓글을 남겼습니다.' : 
+                           ' 친구 요청을 보냈습니다.'}
                         </p>
                         <p className="text-[10px] text-white/30 mt-1 font-mono">
                           {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ko })}
