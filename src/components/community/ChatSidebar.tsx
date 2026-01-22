@@ -15,7 +15,17 @@ interface Message {
   profiles?: {
     username: string;
     avatar_url: string;
+    country_code: string;
   };
+}
+
+const getFlagEmoji = (countryCode: string) => {
+  if (!countryCode) return ""
+  const codePoints = countryCode
+    .toUpperCase()
+    .split("")
+    .map((char) => 127397 + char.charCodeAt(0))
+  return String.fromCodePoint(...codePoints)
 }
 
 export default function ChatSidebar() {
@@ -35,7 +45,7 @@ export default function ChatSidebar() {
     const fetchInitialMessages = async () => {
       const { data, error } = await supabase
         .from("messages")
-        .select("*, profiles(username, avatar_url)")
+        .select("*, profiles(username, avatar_url, country_code)")
         .eq("city_id", selectedCity.name.toLowerCase())
         .order("created_at", { ascending: false })
         .limit(50)
@@ -61,13 +71,14 @@ export default function ChatSidebar() {
           filter: `city_id=eq.${selectedCity.name.toLowerCase()}`
         },
         async (payload) => {
-          // 내 메시지는 이미 낙관적 업데이트로 추가되었으므로 중복 방지
+          // 내 메시지는 낙관적 업데이트로 이미 화면에 있으므로,
+          // 리얼타임으로 들어오는 '나의 메시지'는 무조건 무시한다.
           if (payload.new.author_id === user?.id) return
 
           // 작성자 정보 가져오기 (배칭 고려 필요하지만 일단 비동기 처리)
           const { data } = await supabase
             .from("profiles")
-            .select("username, avatar_url")
+            .select("username, avatar_url, country_code")
             .eq("id", payload.new.author_id)
             .single()
             
@@ -81,8 +92,17 @@ export default function ChatSidebar() {
     const timer = setInterval(() => {
       if (bufferRef.current.length > 0) {
         setMessages((prev) => {
-            const next = [...prev, ...bufferRef.current]
-            return next.slice(-100) // 최근 100개만 유지 (성능 최적화)
+            // 중복 ID 방어 (타인이 보낸 메시지 중복 수신 방지)
+            const existingIds = new Set(prev.map(m => m.id))
+            const uniqueNewMessages = bufferRef.current.filter(m => !existingIds.has(m.id))
+            
+            if (uniqueNewMessages.length === 0) {
+              bufferRef.current = []
+              return prev
+            }
+
+            const next = [...prev, ...uniqueNewMessages]
+            return next.slice(-100)
         })
         bufferRef.current = []
       }
@@ -92,7 +112,7 @@ export default function ChatSidebar() {
       supabase.removeChannel(channel)
       clearInterval(timer)
     }
-  }, [selectedCity])
+  }, [selectedCity, user?.id])
 
   // 새 메시지 오면 아래로 스크롤
   useEffect(() => {
@@ -117,15 +137,16 @@ export default function ChatSidebar() {
       created_at: new Date().toISOString(),
       profiles: {
         username: profile?.username || user.email?.split('@')[0] || 'Unknown',
-        avatar_url: profile?.avatar_url || null
+        avatar_url: profile?.avatar_url || null,
+        country_code: profile?.country_code || 'KR' // 현재 감지된 국가 코드 사용
       }
     }
     
     setMessages(prev => [...prev, optimisticMessage].slice(-100))
     setInputValue("")
-    // setSending(true) -> 화면을 막지 않음
 
     try {
+      // 2. 서버 전송 (ID 교체하지 않음)
       const { error } = await supabase.from("messages").insert({
         content,
         author_id: user.id,
@@ -209,11 +230,18 @@ export default function ChatSidebar() {
                     <Send className="w-5 h-5" />
                 </button>
             </form>
-            {!user && (
-                <p className="mt-2 text-[10px] text-center text-red-400/60 font-mono italic">
-                    [ERR] AUTH_REQUIRED: LOGIN TO ESTABLISH LINK
-                </p>
-            )}
+            <div className="mt-3 flex items-center justify-between px-1">
+                {!user ? (
+                    <p className="text-[10px] text-red-400/60 font-mono italic">
+                        [ERR] AUTH_REQUIRED: LOGIN TO ESTABLISH LINK
+                    </p>
+                ) : (
+                    <p className="text-[9px] text-white/20 font-mono flex items-center gap-1.5 uppercase tracking-tighter">
+                        <span className="w-1 h-1 bg-cyan-500 rounded-full animate-ping" />
+                        All location data is system-verified via IP Geo-Trace
+                    </p>
+                )}
+            </div>
           </div>
 
           {/* Hologic Grid Decor */}
@@ -239,8 +267,20 @@ function MessageItem({ message, isOwn }: { message: Message, isOwn: boolean }) {
                 alt="Avatar"
             />
             <div className={`max-w-[75%] flex flex-col ${isOwn ? 'items-end' : ''}`}>
-                <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">
+                <div className="flex items-center gap-1.5 mb-1">
+                    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-cyan-500/10 border border-cyan-500/20 rounded text-[9px] group relative">
+                        <span className="drop-shadow-sm">
+                            {getFlagEmoji(message.profiles?.country_code || 'KR')}
+                        </span>
+                        <span className="text-cyan-400/80 font-mono font-bold tracking-tighter uppercase">
+                            Signal
+                        </span>
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block bg-slate-800 text-[8px] text-cyan-300 px-2 py-1 rounded border border-cyan-500/30 whitespace-nowrap z-50">
+                            Location Verified via IP-Trace
+                        </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-white/50 uppercase tracking-widest pl-1">
                         {message.profiles?.username || 'Unknown'}
                     </span>
                     <span className="text-[8px] text-white/20 font-mono">

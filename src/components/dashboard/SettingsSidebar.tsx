@@ -11,6 +11,7 @@ import { getCroppedImg } from "@/utils/cropImage"
 import { v4 as uuidv4 } from "uuid"
 import { Camera } from "lucide-react"
 
+
 export default function SettingsSidebar() {
   const { isSettingsOpen, closeSettings } = useStore()
   const { profile, fetchProfile, user, signOut } = useAuth()
@@ -298,6 +299,7 @@ export default function SettingsSidebar() {
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-all font-medium"
                   />
                 </div>
+
 
                 <div className="pt-2 space-y-3">
                   <button
