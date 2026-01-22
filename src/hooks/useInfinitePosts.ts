@@ -6,13 +6,22 @@ interface UseInfinitePostsProps {
   cityId?: string
   hashtag?: string | null
   searchQuery?: string
+  authorId?: string
+  likedByUserId?: string
 }
 
 const POSTS_PER_PAGE = 10
 
-export function useInfinitePosts({ category, cityId, hashtag, searchQuery }: UseInfinitePostsProps) {
+export function useInfinitePosts({ 
+  category, 
+  cityId, 
+  hashtag, 
+  searchQuery, 
+  authorId, 
+  likedByUserId 
+}: UseInfinitePostsProps) {
   return useInfiniteQuery({
-    queryKey: ["posts", category, cityId, hashtag, searchQuery],
+    queryKey: ["posts", category, cityId, hashtag, searchQuery, authorId, likedByUserId],
     queryFn: async ({ pageParam = 0 }) => {
       // 일반 posts 테이블 대신, 댓글까지 합쳐진 searchable_posts 뷰를 조회합니다.
       let query = supabase
@@ -30,8 +39,22 @@ export function useInfinitePosts({ category, cityId, hashtag, searchQuery }: Use
       }
 
       if (hashtag) {
-        // 이미 search_blob에 해시태그가 포함되어 있으므로 동일하게 검색 가능
         query = query.ilike("search_blob", `%#${hashtag}%`)
+      }
+
+      if (authorId) {
+        query = query.eq("author_id", authorId)
+      }
+
+      if (likedByUserId) {
+        // 특정 유저가 좋아요한 글을 가져오기 위한 서브쿼리 필터
+        const { data: likedPostIds } = await supabase
+          .from("likes")
+          .select("post_id")
+          .eq("user_id", likedByUserId)
+        
+        const ids = likedPostIds?.map(l => l.post_id) || []
+        query = query.in("id", ids)
       }
 
       if (searchQuery) {

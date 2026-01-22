@@ -87,6 +87,10 @@ export default function CommentSection({ postId, postAuthorId, onCommentCountCha
 
       if (error) throw error
 
+      // XP 보상 (+5 XP)
+      await supabase.rpc('increment_xp', { user_id: user.id, amount: 5 })
+      useAuth.getState().fetchProfile(user.id)
+
       // 알림 보내기 (내가 내 글에 댓글 단 게 아닐 때만)
       if (postAuthorId !== user.id) {
         await supabase.from("notifications").insert({

@@ -111,14 +111,17 @@ export default function PostCard({ post, typeIcon: TypeIcon, typeLabel, onDelete
           .insert({ post_id: post.id, user_id: user.id })
         if (error) throw error
 
-        // 알림 보내기 (내가 내 글에 누른 게 아닐 때만)
+        // 작성자에게 XP 보상 (+2 XP) - 내가 내 글에 누른 게 아닐 때만
         if (post.author_id !== user.id) {
-          await supabase.from("notifications").insert({
-            receiver_id: post.author_id,
-            sender_id: user.id,
-            type: "like",
-            post_id: post.id
-          })
+            await supabase.rpc('increment_xp', { user_id: post.author_id, amount: 2 })
+            
+            // 알림 보내기
+            await supabase.from("notifications").insert({
+                receiver_id: post.author_id,
+                sender_id: user.id,
+                type: "like",
+                post_id: post.id
+            })
         }
       }
     } catch (error) {

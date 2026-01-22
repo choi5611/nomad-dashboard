@@ -98,7 +98,11 @@ export default function WritePostForm({ onClose, onPostCreate, tabs }: WritePost
 
       if (error) throw error
       
-      toast.success("게시글이 성공적으로 등록되었습니다!")
+      // 3. XP 보상 (+10 XP)
+      await supabase.rpc('increment_xp', { user_id: user.id, amount: 10 })
+      useAuth.getState().fetchProfile(user.id)
+
+      toast.success("게시글이 성공적으로 등록되었습니다! (+10 XP)")
       onPostCreate() // 목록 새로고침
       onClose()
     } catch (error: any) {
