@@ -26,6 +26,8 @@ const TABS = [
   { id: "tip", label: "팁" },
 ]
 
+const POPULAR_TAGS = ["맛집", "디지털노마드", "카페", "태국", "한달살기", "작업공간"]
+
 export default function CommunitySidebar() {
   const selectedCity = useStore((state) => state.selectedCity)
   const isSidebarOpen = useStore((state) => state.isSidebarOpen)
@@ -119,6 +121,19 @@ export default function CommunitySidebar() {
               <X className="w-3 h-3 text-white/40" />
             </button>
           )}
+        </div>
+        
+        {/* Popular Tags Suggestion */}
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {POPULAR_TAGS.map(tag => (
+            <button
+              key={tag}
+              onClick={() => setSearchQuery(`#${tag}`)}
+              className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 border border-white/5 text-white/40 hover:text-cyan-400 hover:border-cyan-500/30 hover:bg-cyan-500/5 transition-all"
+            >
+              #{tag}
+            </button>
+          ))}
         </div>
       </div>
 

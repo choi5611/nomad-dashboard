@@ -250,12 +250,16 @@ function CommentItem({ comment, currentUserId, onReply, onDelete }: {
   const isAuthor = currentUserId === comment.author.id
   const displayName = comment.author.username || "사용자"
   
-  // @username 패턴을 찾아서 링크/하이라이트 스타일 적용
+  // @username 및 #hashtag 패턴을 모두 찾아 하이라이트 적용
   const formatContent = (content: string) => {
-    const parts = content.split(/(@[\w.가-힣]+)/) // 한글 닉네임 대응
+    // @멘션과 #해시태그를 모두 캡처하는 정규식
+    const parts = content.split(/(@[\w.가-힣]+|#[^\s#]+)/)
     return parts.map((part, i) => {
       if (part.startsWith("@")) {
         return <span key={i} className="text-cyan-400 font-medium">{part}</span>
+      }
+      if (part.startsWith("#")) {
+        return <span key={i} className="text-cyan-400 hover:underline cursor-pointer">{part}</span>
       }
       return part
     })

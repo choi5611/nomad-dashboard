@@ -38,9 +38,12 @@ export function useInfinitePosts({ category, cityId, hashtag, searchQuery }: Use
       }
 
       if (searchQuery) {
-        // PostgREST에서 조인된 테이블 간의 OR 필터는 복잡하므로 
-        // 우선 가장 핵심인 게시글 내용(content) 검색으로 안정화합니다.
-        query = query.ilike("content", `%${searchQuery}%`)
+        const terms = searchQuery.trim().split(/\s+/)
+        terms.forEach(term => {
+          if (term) {
+            query = query.ilike("content", `%${term}%`)
+          }
+        })
       }
 
       const { data, error } = await query
