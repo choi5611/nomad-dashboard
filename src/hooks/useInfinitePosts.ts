@@ -14,14 +14,10 @@ export function useInfinitePosts({ category, cityId, hashtag, searchQuery }: Use
   return useInfiniteQuery({
     queryKey: ["posts", category, cityId, hashtag, searchQuery],
     queryFn: async ({ pageParam = 0 }) => {
+      // 일반 posts 테이블 대신, 댓글까지 합쳐진 searchable_posts 뷰를 조회합니다.
       let query = supabase
-        .from("posts")
-        .select(`
-          *, 
-          profiles!inner(username, avatar_url),
-          likes(count),
-          comments(count)
-        `)
+        .from("searchable_posts")
+        .select("*")
         .order("created_at", { ascending: false })
         .range(pageParam * POSTS_PER_PAGE, (pageParam + 1) * POSTS_PER_PAGE - 1)
 
@@ -34,14 +30,16 @@ export function useInfinitePosts({ category, cityId, hashtag, searchQuery }: Use
       }
 
       if (hashtag) {
-        query = query.ilike("content", `%#${hashtag}%`)
+        // 이미 search_blob에 해시태그가 포함되어 있으므로 동일하게 검색 가능
+        query = query.ilike("search_blob", `%#${hashtag}%`)
       }
 
       if (searchQuery) {
         const terms = searchQuery.trim().split(/\s+/)
         terms.forEach(term => {
           if (term) {
-            query = query.ilike("content", `%${term}%`)
+            // 게시글 본문 + 모든 댓글 + 작성자명이 합쳐진 'search_blob'에서 검색!
+            query = query.ilike("search_blob", `%${term}%`)
           }
         })
       }
@@ -50,11 +48,14 @@ export function useInfinitePosts({ category, cityId, hashtag, searchQuery }: Use
 
       if (error) throw error
 
-      // Transform counts
+      // 뷰의 데이터를 기존 PostCard가 기대하는 구조로 변환해줍니다.
       return (data || []).map((post) => ({
         ...post,
-        likes_count: post.likes?.[0]?.count || 0,
-        comments_count: post.comments?.[0]?.count || 0,
+        profiles: {
+          username: post.author_username,
+          avatar_url: post.author_avatar_url
+        }
+        // likes_count, comments_count는 뷰에서 이미 숫자로 제공됨
       }))
     },
     initialPageParam: 0,
