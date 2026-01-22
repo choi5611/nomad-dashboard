@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Plus, Loader2, MessageSquare } from "lucide-react"
+import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Plus, Loader2, MessageSquare, Search } from "lucide-react"
 import { useStore } from "@/store/useStore"
 import { useInView } from "react-intersection-observer"
 import { useInfinitePosts } from "@/hooks/useInfinitePosts"
@@ -33,6 +33,7 @@ export default function CommunitySidebar() {
   const [activeTab, setActiveTab] = useState("all")
   const [isWriting, setIsWriting] = useState(false)
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
   const { isChatOpen, toggleChat } = useStore()
   
   const { ref, inView } = useInView()
@@ -47,7 +48,8 @@ export default function CommunitySidebar() {
   } = useInfinitePosts({ 
     category: activeTab, 
     cityId: selectedCity?.name?.toLowerCase(),
-    hashtag: selectedTag
+    hashtag: selectedTag,
+    searchQuery: searchQuery
   })
 
   useEffect(() => {
@@ -95,6 +97,28 @@ export default function CommunitySidebar() {
         >
           <X className="w-5 h-5 text-white/70" />
         </button>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="p-3 border-b border-white/5 bg-white/5">
+        <div className="relative group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 group-focus-within:text-cyan-400 transition-colors" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search posts, users, tags..."
+            className="w-full bg-black/20 border border-white/10 rounded-xl py-2 pl-10 pr-10 text-sm text-white focus:outline-none focus:border-cyan-500/50 transition-all placeholder:text-white/20"
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full transition-colors"
+            >
+              <X className="w-3 h-3 text-white/40" />
+            </button>
+          )}
         </div>
       </div>
 

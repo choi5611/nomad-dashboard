@@ -5,19 +5,20 @@ interface UseInfinitePostsProps {
   category: string
   cityId?: string
   hashtag?: string | null
+  searchQuery?: string
 }
 
 const POSTS_PER_PAGE = 10
 
-export function useInfinitePosts({ category, cityId, hashtag }: UseInfinitePostsProps) {
+export function useInfinitePosts({ category, cityId, hashtag, searchQuery }: UseInfinitePostsProps) {
   return useInfiniteQuery({
-    queryKey: ["posts", category, cityId, hashtag],
+    queryKey: ["posts", category, cityId, hashtag, searchQuery],
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase
         .from("posts")
         .select(`
           *, 
-          profiles(username, avatar_url),
+          profiles!inner(username, avatar_url),
           likes(count),
           comments(count)
         `)
@@ -34,6 +35,12 @@ export function useInfinitePosts({ category, cityId, hashtag }: UseInfinitePosts
 
       if (hashtag) {
         query = query.ilike("content", `%#${hashtag}%`)
+      }
+
+      if (searchQuery) {
+        // PostgREST에서 조인된 테이블 간의 OR 필터는 복잡하므로 
+        // 우선 가장 핵심인 게시글 내용(content) 검색으로 안정화합니다.
+        query = query.ilike("content", `%${searchQuery}%`)
       }
 
       const { data, error } = await query
