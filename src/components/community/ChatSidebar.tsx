@@ -262,9 +262,9 @@ export default function ChatSidebar() {
                 >
                     <Users className="w-3.5 h-3.5" />
                     FRIENDS
-                    {activeTab !== 'friends' && (Object.values(unreadState.dms).reduce((a,b)=>a+b,0) + Object.entries(unreadState.rooms).filter(([id]) => !['global-lounge', 'nomad-tips'].includes(id)).reduce((a,b)=>a+b[1],0)) > 0 && (
+                    {activeTab !== 'friends' && (Object.values(unreadState.dms).reduce((a,b)=>a+b,0) + Object.entries(unreadState.rooms).filter(([id]) => !['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(id)).reduce((a,b)=>a+b[1],0)) > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] flex items-center justify-center rounded-full border border-slate-900">
-                            {(Object.values(unreadState.dms).reduce((a,b)=>a+b,0) + Object.entries(unreadState.rooms).filter(([id]) => !['global-lounge', 'nomad-tips'].includes(id)).reduce((a,b)=>a+b[1],0)) > 99 ? '99+' : (Object.values(unreadState.dms).reduce((a,b)=>a+b,0) + Object.entries(unreadState.rooms).filter(([id]) => !['global-lounge', 'nomad-tips'].includes(id)).reduce((a,b)=>a+b[1],0))}
+                            {(Object.values(unreadState.dms).reduce((a,b)=>a+b,0) + Object.entries(unreadState.rooms).filter(([id]) => !['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(id)).reduce((a,b)=>a+b[1],0)) > 99 ? '99+' : (Object.values(unreadState.dms).reduce((a,b)=>a+b,0) + Object.entries(unreadState.rooms).filter(([id]) => !['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(id)).reduce((a,b)=>a+b[1],0))}
                         </span>
                     )}
                 </button>
@@ -281,9 +281,9 @@ export default function ChatSidebar() {
                 >
                     <Sparkles className="w-3.5 h-3.5" />
                     OPEN
-                    {activeTab !== 'open' && Object.entries(unreadState.rooms).filter(([id]) => ['global-lounge', 'nomad-tips'].includes(id)).reduce((a,b)=>a+b[1],0) > 0 && (
+                    {activeTab !== 'open' && Object.entries(unreadState.rooms).filter(([id]) => ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(id)).reduce((a,b)=>a+b[1],0) > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] flex items-center justify-center rounded-full border border-slate-900">
-                            {Object.entries(unreadState.rooms).filter(([id]) => ['global-lounge', 'nomad-tips'].includes(id)).reduce((a,b)=>a+b[1],0) > 99 ? '99+' : Object.entries(unreadState.rooms).filter(([id]) => ['global-lounge', 'nomad-tips'].includes(id)).reduce((a,b)=>a+b[1],0)}
+                            {Object.entries(unreadState.rooms).filter(([id]) => ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(id)).reduce((a,b)=>a+b[1],0) > 99 ? '99+' : Object.entries(unreadState.rooms).filter(([id]) => ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(id)).reduce((a,b)=>a+b[1],0)}
                         </span>
                     )}
                 </button>
@@ -355,19 +355,19 @@ export default function ChatSidebar() {
                         <OpenChatRoomItem 
                             name="Global Nomad Lounge" 
                             participants={128}
-                            unreadCount={unreadState.rooms['global-lounge']}
+                            unreadCount={unreadState.rooms['550e8400-e29b-41d4-a716-446655440000']}
                             onClick={() => {
-                                setActiveChat({ type: 'open', id: 'global-lounge', name: 'Global Nomad Lounge' })
-                                resetUnread('room', 'global-lounge')
+                                setActiveChat({ type: 'open', id: '550e8400-e29b-41d4-a716-446655440000', name: 'Global Nomad Lounge' })
+                                resetUnread('room', '550e8400-e29b-41d4-a716-446655440000')
                             }}
                         />
                         <OpenChatRoomItem 
                             name="Digital Nomad Tips" 
                             participants={56}
-                            unreadCount={unreadState.rooms['nomad-tips']}
+                            unreadCount={unreadState.rooms['550e8400-e29b-41d4-a716-446655440001']}
                             onClick={() => {
-                                setActiveChat({ type: 'open', id: 'nomad-tips', name: 'Digital Nomad Tips' })
-                                resetUnread('room', 'nomad-tips')
+                                setActiveChat({ type: 'open', id: '550e8400-e29b-41d4-a716-446655440001', name: 'Digital Nomad Tips' })
+                                resetUnread('room', '550e8400-e29b-41d4-a716-446655440001')
                             }}
                         />
                     </div>

@@ -147,7 +147,7 @@ function App() {
           } 
           // 룸(그룹/오픈)인 경우
           else if (payload.new.room_id) {
-            const isOpenChat = ['global-lounge', 'nomad-tips'].includes(payload.new.room_id)
+            const isOpenChat = ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(payload.new.room_id)
             const targetTab = isOpenChat ? 'open' : 'friends'
             const isVisible = isChatOpen && activeTab === targetTab && activeChat?.id === payload.new.room_id
             
