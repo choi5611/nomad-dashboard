@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import DashboardOverlay from "@/components/dashboard/DashboardOverlay"
 import Scene from "@/components/canvas/Scene"
 import CommunitySidebar from "@/components/community/CommunitySidebar"
+import ChatSidebar from "@/components/community/ChatSidebar"
 import LoginModal from "@/components/auth/LoginModal"
 import SettingsSidebar from "@/components/dashboard/SettingsSidebar"
 import { supabase } from "@/lib/supabase"
@@ -40,6 +41,9 @@ function App() {
 
       {/* Community Sidebar */}
       <CommunitySidebar />
+
+      {/* Chat Sidebar */}
+      <ChatSidebar />
 
       {/* Login Modal */}
       <LoginModal 

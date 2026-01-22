@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Plus, Loader2 } from "lucide-react"
+import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Plus, Loader2, MessageSquare } from "lucide-react"
 import { useStore } from "@/store/useStore"
 import { useInView } from "react-intersection-observer"
 import { useInfinitePosts } from "@/hooks/useInfinitePosts"
@@ -33,6 +33,7 @@ export default function CommunitySidebar() {
   const [activeTab, setActiveTab] = useState("all")
   const [isWriting, setIsWriting] = useState(false)
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
+  const { isChatOpen, toggleChat } = useStore()
   
   const { ref, inView } = useInView()
   
@@ -72,11 +73,21 @@ export default function CommunitySidebar() {
           </h2>
         </div>
         <div className="flex items-center gap-1">
-         <button 
+          <button 
             onClick={() => setIsWriting(true)} 
             className="p-2 hover:bg-white/10 rounded-lg transition-colors text-cyan-400"
+            title="새 게시글 작성"
           >
             <Plus className="w-5 h-5" />
+          </button>
+          <button 
+            onClick={toggleChat} 
+            className={`p-2 rounded-lg transition-colors  ${
+              isChatOpen ? "bg-cyan-500/20 text-cyan-400 " : "hover:bg-white/10 text-cyan-400/60 hover:text-cyan-400 "
+            }`}
+            title="실시간 채팅"
+          >
+            <MessageSquare className="w-5 h-5 " />
           </button>
         <button
           onClick={closeSidebar}

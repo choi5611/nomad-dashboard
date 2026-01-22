@@ -1,6 +1,7 @@
 import ClockWidget from "./ClockWidget"
 import ExchangeRateWidget from "./ExchangeRateWidget"
 import WeatherWidget from "./WeatherWidget"
+import { MessageSquare } from "lucide-react"
 import { useStore } from "@/store/useStore"
 import { useAuth } from "@/store/useAuth"
 
@@ -8,6 +9,7 @@ export default function DashboardOverlay() {
   const selectedCity = useStore((state) => state.selectedCity)
   const openLoginModal = useStore((state) => state.openLoginModal)
   const openSettings = useStore((state) => state.openSettings)
+  const { isChatOpen, toggleChat } = useStore()
   const { user, profile } = useAuth()
   return (
     <div className="absolute inset-0 z-10 pointer-events-none p-6 flex flex-col justify-between">
@@ -49,6 +51,18 @@ export default function DashboardOverlay() {
               Login
             </button>
           )}
+
+          {/* Chat Toggle Button */}
+          <button
+            onClick={toggleChat}
+            className={`p-3 rounded-xl border transition-all pointer-events-auto shadow-lg backdrop-blur-md ${
+                isChatOpen 
+                ? "bg-cyan-500 border-cyan-400 text-white shadow-cyan-500/20" 
+                : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10"
+            }`}
+          >
+            <MessageSquare className="w-5 h-5" />
+          </button>
         </div>
       </header>
 

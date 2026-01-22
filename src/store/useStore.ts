@@ -24,6 +24,9 @@ interface AppState {
   isSettingsOpen: boolean
   openSettings: () => void
   closeSettings: () => void
+  isChatOpen: boolean
+  toggleChat: () => void
+  closeChat: () => void
 }
 
 const AUTO_ROTATE_DELAY = 5000 // 5초 후 다시 회전
@@ -64,4 +67,7 @@ export const useStore = create<AppState>((set, get) => ({
   isSettingsOpen: false,
   openSettings: () => set({ isSettingsOpen: true, isSidebarOpen: false }), // 설정 열 때 커뮤니티 사이드바는 닫음
   closeSettings: () => set({ isSettingsOpen: false }),
+  isChatOpen: false,
+  toggleChat: () => set((state) => ({ isChatOpen: !state.isChatOpen })),
+  closeChat: () => set({ isChatOpen: false }),
 }))
