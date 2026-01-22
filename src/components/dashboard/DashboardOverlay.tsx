@@ -2,25 +2,113 @@ import { motion } from "framer-motion"
 import ClockWidget from "./ClockWidget"
 import ExchangeRateWidget from "./ExchangeRateWidget"
 import WeatherWidget from "./WeatherWidget"
-import { MessageSquare } from "lucide-react"
+import { MessageSquare, MapPin, CheckCircle2 } from "lucide-react"
 import { useStore } from "@/store/useStore"
 import { useAuth } from "@/store/useAuth"
 import NotificationCenter from "../community/NotificationCenter"
+import { useState, useEffect } from "react"
+import { supabase } from "@/lib/supabase"
+import { toast } from "sonner"
 
 export default function DashboardOverlay() {
   const selectedCity = useStore((state) => state.selectedCity)
   const openLoginModal = useStore((state) => state.openLoginModal)
   const openSettings = useStore((state) => state.openSettings)
   const { isChatOpen, toggleChat, isSidebarOpen } = useStore()
-  const { user, profile } = useAuth()
+  const { user, profile, fetchProfile } = useAuth()
+  const [hasVisited, setHasVisited] = useState(false)
+  const [checkingIn, setCheckingIn] = useState(false)
+
+  // 방문 여부 확인
+  useEffect(() => {
+    const checkVisit = async () => {
+      if (!user || !selectedCity) return
+      
+      const { data, error } = await supabase
+        .from('visits')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('city_id', selectedCity.name.toLowerCase())
+        .maybeSingle()
+      
+      if (!error && data) {
+        setHasVisited(true)
+      } else {
+        setHasVisited(false)
+      }
+    }
+
+    checkVisit()
+  }, [user, selectedCity])
+
+  const handleCheckIn = async () => {
+    if (!user || !selectedCity || checkingIn) return
+    
+    setCheckingIn(true)
+    try {
+      const { error } = await supabase
+        .from('visits')
+        .insert({
+          user_id: user.id,
+          city_id: selectedCity.name.toLowerCase()
+        })
+      
+      if (error) {
+        if (error.code === '23505') {
+            toast.error("이미 방문 인증된 도시입니다.")
+        } else {
+            throw error
+        }
+      } else {
+        setHasVisited(true)
+        toast.success(`${selectedCity.name} 방문 인증 완료! (+50 XP)`)
+        fetchProfile(user.id) // XP 갱신
+      }
+    } catch (error: any) {
+      toast.error("방문 인증 실패: " + error.message)
+    } finally {
+      setCheckingIn(false)
+    }
+  }
+
+  // 위치 인증 가능 여부 (내 접속 국가와 도시 국가가 일치할 때)
+  const canVerifyLocation = profile?.country_code === selectedCity?.countryCode
   return (
     <div className="absolute inset-0 z-10 pointer-events-none p-6 flex flex-col justify-between">
       {/* Top Bar: Header & Status */}
       <header className="flex justify-between items-start">
         <div className="pointer-events-auto">
-           <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-600 drop-shadow-sm">
-            {selectedCity ? selectedCity.name : "Nomad OS"}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-600 drop-shadow-sm">
+                {selectedCity ? selectedCity.name : "Nomad OS"}
+            </h1>
+            
+            {/* Verification Badge/Button */}
+            {user && selectedCity && (
+                hasVisited ? (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 border border-green-500/30 rounded-full">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                        <span className="text-[10px] font-bold text-green-400 uppercase tracking-tighter">Verified Visit</span>
+                    </div>
+                ) : (
+                    <button 
+                        onClick={handleCheckIn}
+                        disabled={checkingIn || !canVerifyLocation}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 border rounded-full transition-all group ${
+                            canVerifyLocation 
+                            ? "bg-cyan-500/20 hover:bg-cyan-500/40 border-cyan-500/30" 
+                            : "bg-white/5 border-white/5 opacity-40 cursor-not-allowed"
+                        }`}
+                        title={canVerifyLocation ? "Verify your visit" : "You must be in the same country to verify"}
+                    >
+                        <MapPin className={`w-3.5 h-3.5 ${canVerifyLocation ? "text-cyan-400 group-hover:animate-bounce" : "text-white/20"}`} />
+                        <span className={`text-[10px] font-bold uppercase tracking-tighter ${canVerifyLocation ? "text-cyan-400" : "text-white/20"}`}>
+                            {checkingIn ? "Checking In..." : canVerifyLocation ? "Verify Visit" : "Location Lock"}
+                        </span>
+                    </button>
+                )
+            )}
+          </div>
           <p className="text-blue-200/80 text-sm mt-1">
             {selectedCity ? `Global Command Center • ${selectedCity.countryCode}` : "Select a city to begin"}
           </p>

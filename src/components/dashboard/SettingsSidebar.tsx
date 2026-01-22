@@ -12,6 +12,8 @@ import { v4 as uuidv4 } from "uuid"
 import { Camera } from "lucide-react"
 import { getNomadRank } from "@/utils/rankUtils"
 import MyActivityList from "@/components/community/MyActivityList"
+import MedalCollection from "./MedalCollection"
+import { Award } from "lucide-react"
 
 
 export default function SettingsSidebar() {
@@ -267,6 +269,15 @@ export default function SettingsSidebar() {
                     </div>
                   )
                 })()}
+
+                {/* Visit Medals Collection */}
+                <div className="mt-8 space-y-4">
+                  <div className="flex items-center gap-2 px-1">
+                    <Award className="w-4 h-4 text-cyan-400" />
+                    <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.2em] opacity-60">Certified Medals</h3>
+                  </div>
+                  <MedalCollection />
+                </div>
               </div>
 
               {/* Cropper Modal Overlay */}
