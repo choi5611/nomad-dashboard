@@ -33,11 +33,11 @@ export default function ChatSidebar() {
   const { user, profile } = useAuth()
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState("")
-  // const [sending, setSending] = useState(false) // 제거
+  const [onlineCount, setOnlineCount] = useState(1)
   const scrollRef = useRef<HTMLDivElement>(null)
   const bufferRef = useRef<Message[]>([])
 
-  // 초기 메시지 로드 및 구독
+  // 초기 메시지 로드 및 구독 (Presence 포함)
   useEffect(() => {
     if (!selectedCity) return
 
@@ -59,9 +59,16 @@ export default function ChatSidebar() {
 
     fetchInitialMessages()
 
-    // 2. 리얼시간 구독
-    const channel = supabase
-      .channel(`chat:${selectedCity.name.toLowerCase()}`)
+    // 2. 리얼시간 구독 (Messages + Presence)
+    const channel = supabase.channel(`chat:${selectedCity.name.toLowerCase()}`, {
+      config: {
+        presence: {
+          key: user?.id || 'anonymous-' + Math.random().toString(36).substring(7),
+        },
+      },
+    })
+
+    channel
       .on(
         "postgres_changes",
         { 
@@ -71,11 +78,8 @@ export default function ChatSidebar() {
           filter: `city_id=eq.${selectedCity.name.toLowerCase()}`
         },
         async (payload) => {
-          // 내 메시지는 낙관적 업데이트로 이미 화면에 있으므로,
-          // 리얼타임으로 들어오는 '나의 메시지'는 무조건 무시한다.
           if (payload.new.author_id === user?.id) return
 
-          // 작성자 정보 가져오기 (배칭 고려 필요하지만 일단 비동기 처리)
           const { data } = await supabase
             .from("profiles")
             .select("username, avatar_url, country_code")
@@ -86,13 +90,29 @@ export default function ChatSidebar() {
           bufferRef.current.push(newMessage)
         }
       )
-      .subscribe()
+      .on('presence', { event: 'sync' }, () => {
+        const newState = channel.presenceState()
+        const count = Object.keys(newState).length
+        setOnlineCount(count)
+      })
+      .on('presence', { event: 'join' }, () => {
+        // 새로운 접속자 발생 시 로직 (필요시 알림 등)
+      })
+      .on('presence', { event: 'leave' }, () => {
+        // 이탈자 발생 시 로직
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            online_at: new Date().toISOString(),
+          })
+        }
+      })
 
-    // 3. UI 업데이트 배칭 (200ms 주기로 몰아서 처리)
+    // 3. UI 업데이트 배칭
     const timer = setInterval(() => {
       if (bufferRef.current.length > 0) {
         setMessages((prev) => {
-            // 중복 ID 방어 (타인이 보낸 메시지 중복 수신 방지)
             const existingIds = new Set(prev.map(m => m.id))
             const uniqueNewMessages = bufferRef.current.filter(m => !existingIds.has(m.id))
             
@@ -189,7 +209,9 @@ export default function ChatSidebar() {
                         <div className="absolute inset-0 bg-cyan-400/20 blur-sm rounded-full animate-ping" />
                     </div>
                     <h2 className="text-lg font-bold text-white tracking-widest uppercase flex items-center gap-2">
-                        Comms Link <span className="text-[10px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded border border-cyan-500/30">Active</span>
+                        Comms Link <span className="text-[10px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded border border-cyan-500/30 font-mono">
+                          {onlineCount} NOMADS IN
+                        </span>
                     </h2>
                 </div>
                 <button onClick={closeChat} className="p-2 hover:bg-white/10 rounded-lg text-white/50 hover:text-white transition-colors">

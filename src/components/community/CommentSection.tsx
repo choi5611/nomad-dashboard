@@ -22,10 +22,11 @@ interface Comment {
 
 interface CommentSectionProps {
   postId: string
+  postAuthorId: string
   onCommentCountChange?: (count: number) => void
 }
 
-export default function CommentSection({ postId, onCommentCountChange }: CommentSectionProps) {
+export default function CommentSection({ postId, postAuthorId, onCommentCountChange }: CommentSectionProps) {
   const user = useAuth((state) => state.user)
   const queryClient = useQueryClient()
   const { 
@@ -85,6 +86,16 @@ export default function CommentSection({ postId, onCommentCountChange }: Comment
       })
 
       if (error) throw error
+
+      // 알림 보내기 (내가 내 글에 댓글 단 게 아닐 때만)
+      if (postAuthorId !== user.id) {
+        await supabase.from("notifications").insert({
+          receiver_id: postAuthorId,
+          sender_id: user.id,
+          type: "comment",
+          post_id: postId
+        })
+      }
 
       setContent("")
       setReplyTo(null)

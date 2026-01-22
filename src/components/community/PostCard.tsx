@@ -110,6 +110,16 @@ export default function PostCard({ post, typeIcon: TypeIcon, typeLabel, onDelete
           .from("likes")
           .insert({ post_id: post.id, user_id: user.id })
         if (error) throw error
+
+        // 알림 보내기 (내가 내 글에 누른 게 아닐 때만)
+        if (post.author_id !== user.id) {
+          await supabase.from("notifications").insert({
+            receiver_id: post.author_id,
+            sender_id: user.id,
+            type: "like",
+            post_id: post.id
+          })
+        }
       }
     } catch (error) {
       // Revert on error
@@ -290,6 +300,7 @@ export default function PostCard({ post, typeIcon: TypeIcon, typeLabel, onDelete
       {showComments && (
         <CommentSection 
           postId={post.id} 
+          postAuthorId={post.author_id}
           onCommentCountChange={setCommentCount}
         />
       )}

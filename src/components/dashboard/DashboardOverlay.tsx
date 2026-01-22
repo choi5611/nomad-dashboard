@@ -1,15 +1,17 @@
+import { motion } from "framer-motion"
 import ClockWidget from "./ClockWidget"
 import ExchangeRateWidget from "./ExchangeRateWidget"
 import WeatherWidget from "./WeatherWidget"
 import { MessageSquare } from "lucide-react"
 import { useStore } from "@/store/useStore"
 import { useAuth } from "@/store/useAuth"
+import NotificationCenter from "../community/NotificationCenter"
 
 export default function DashboardOverlay() {
   const selectedCity = useStore((state) => state.selectedCity)
   const openLoginModal = useStore((state) => state.openLoginModal)
   const openSettings = useStore((state) => state.openSettings)
-  const { isChatOpen, toggleChat } = useStore()
+  const { isChatOpen, toggleChat, isSidebarOpen } = useStore()
   const { user, profile } = useAuth()
   return (
     <div className="absolute inset-0 z-10 pointer-events-none p-6 flex flex-col justify-between">
@@ -25,7 +27,13 @@ export default function DashboardOverlay() {
         </div>
 
         {/* Top Right Widget Area */}
-        <div className="flex gap-4 pointer-events-auto items-center">
+        <motion.div 
+          animate={{ 
+            x: (isSidebarOpen ? -384 : 0) + (isChatOpen ? -400 : 0)
+          }}
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          className="flex gap-4 pointer-events-auto items-center"
+        >
           {selectedCity && <ClockWidget timezone={selectedCity.timezone} />}
           
           {/* Auth Button */}
@@ -52,6 +60,11 @@ export default function DashboardOverlay() {
             </button>
           )}
 
+          {/* Notification Center */}
+          <div className="pointer-events-auto">
+            <NotificationCenter />
+          </div>
+
           {/* Chat Toggle Button */}
           <button
             onClick={toggleChat}
@@ -63,7 +76,7 @@ export default function DashboardOverlay() {
           >
             <MessageSquare className="w-5 h-5" />
           </button>
-        </div>
+        </motion.div>
       </header>
 
       {/* Bottom Widgets */}
