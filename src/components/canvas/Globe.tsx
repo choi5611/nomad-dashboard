@@ -1,4 +1,4 @@
-import { useRef } from "react"
+import { useRef, useState, useMemo } from "react"
 import { useFrame } from "@react-three/fiber"
 import { useTexture } from "@react-three/drei"
 import * as THREE from "three"
@@ -6,6 +6,56 @@ import Pin from "./Pin"
 import { GLOBE_RADIUS } from "./math"
 import { useStore, type City } from "@/store/useStore"
 import { CITIES } from "@/data/cities"
+
+// 국가 코드 -> 한글 국가명 매핑 (주요 국가만 예시로)
+const COUNTRY_NAMES: Record<string, string> = {
+  KR: "SOUTH KOREA",
+  JP: "JAPAN",
+  TH: "THAILAND",
+  ID: "INDONESIA",
+  SG: "SINGAPORE",
+  VN: "VIETNAM",
+  MY: "MALAYSIA",
+  TW: "TAIWAN",
+  HK: "HONG KONG",
+  CN: "CHINA",
+  IN: "INDIA",
+  PH: "PHILIPPINES",
+  KZ: "KAZAKHSTAN",
+  RU: "RUSSIA",
+  GB: "UNITED KINGDOM",
+  FR: "FRANCE",
+  PT: "PORTUGAL",
+  ES: "SPAIN",
+  IT: "ITALY",
+  DE: "GERMANY",
+  NL: "NETHERLANDS",
+  CZ: "CZECH REPUBLIC",
+  AT: "AUSTRIA",
+  CH: "SWITZERLAND",
+  SE: "SWEDEN",
+  IS: "ICELAND",
+  GR: "GREECE",
+  US: "USA",
+  CA: "CANADA",
+  MX: "MEXICO",
+  BR: "BRAZIL",
+  AR: "ARGENTINA",
+  CL: "CHILE",
+  PE: "PERU",
+  CO: "COLOMBIA",
+  AE: "UAE",
+  SA: "SAUDI ARABIA",
+  IL: "ISRAEL",
+  TR: "TURKEY",
+  EG: "EGYPT",
+  ZA: "SOUTH AFRICA",
+  KE: "KENYA",
+  MA: "MOROCCO",
+  AU: "AUSTRALIA",
+  NZ: "NEW ZEALAND",
+  MV: "MALDIVES"
+}
 
 interface GlobeProps {
   onSelectPin?: (pos: THREE.Vector3) => void
@@ -15,17 +65,37 @@ export default function Globe({ onSelectPin }: GlobeProps) {
   const groupRef = useRef<THREE.Group>(null)
   const setSelectedCity = useStore((state) => state.setSelectedCity)
   const isAutoRotating = useStore((state) => state.isAutoRotating)
+  const [cameraDistance, setCameraDistance] = useState(20)
 
-  // 텍스처 로드 (Three.js 예제 텍스처 사용)
+  // 텍스처 로드
   const [colorMap, normalMap, specularMap] = useTexture([
     'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg',
     'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_normal_2048.jpg',
     'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_specular_2048.jpg'
   ])
 
-  useFrame((_, delta) => {
+  // 현재 줌 레벨에 따라 보여줄 핀 필터링
+  const visibleCities = useMemo(() => {
+    if (cameraDistance > 25) {
+      // 아주 멀리 있을 때: 국가 대표 도시(Priority 1)만 표시
+      return CITIES.filter(c => (c.priority || 3) === 1)
+    } else if (cameraDistance > 15) {
+      // 중간 거리: 주요 도시(Priority 1, 2) 표시
+      return CITIES.filter(c => (c.priority || 3) <= 2)
+    }
+    // 가까이 있을 때: 모든 핀 표시
+    return CITIES
+  }, [cameraDistance])
+
+  useFrame(({ camera }, delta) => {
+    // 자동 회전
     if (groupRef.current && isAutoRotating) {
       groupRef.current.rotation.y += delta * 0.05
+    }
+    // 카메라 거리 감지 (LOD를 위함)
+    const dist = camera.position.length()
+    if (Math.abs(dist - cameraDistance) > 0.5) {
+      setCameraDistance(dist)
     }
   })
 
@@ -76,12 +146,12 @@ export default function Globe({ onSelectPin }: GlobeProps) {
       </mesh>
       
       {/* 위치 핀들 */}
-      {CITIES.map((city) => (
+      {visibleCities.map((city) => (
         <Pin 
           key={city.name}
           lat={city.lat} 
           lng={city.lng} 
-          label={city.name} 
+          label={cameraDistance > 25 ? (COUNTRY_NAMES[city.countryCode] || city.name) : city.name} 
           occludeRef={globeRef}
           onSelect={(pos) => handlePinClick(city, pos)} 
         />

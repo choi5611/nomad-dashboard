@@ -7,6 +7,7 @@ export interface City {
   timezone: string // e.g., 'Asia/Seoul'
   countryCode: string // e.g., 'KR'
   currencyCode: string // e.g., 'KRW'
+  priority?: number // 1: Country Representative, 2: Major City, 3: Spot
 }
 
 interface AppState {
