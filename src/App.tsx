@@ -9,9 +9,13 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/store/useAuth"
 import { useStore } from "@/store/useStore"
 import { Toaster } from "sonner"
+import { CITIES } from "@/data/cities"
+import { useState } from "react"
 
 function App() {
   const setSession = useAuth((state) => state.setSession)
+  const setSelectedCity = useStore((state) => state.setSelectedCity)
+  const [hasDetectedLocation, setHasDetectedLocation] = useState(false)
 
   useEffect(() => {
     // 현재 세션 가져오기
@@ -34,41 +38,72 @@ function App() {
     return () => subscription.unsubscribe()
   }, [setSession])
 
-  // 접속 IP 기반 국가 자동 업데이트 및 초기 도시 설정
-  const updateUserLocation = async (userId: string) => {
+  // 초기 접속 시 익명 상태에서도 위치 감지 & 로그인 시 프로필 업데이트
+  useEffect(() => {
+    const cachedLocation = sessionStorage.getItem("nomad_location_detected")
+    if (!hasDetectedLocation && !cachedLocation) {
+        detectAndSetInitialLocation()
+    } else if (cachedLocation && !hasDetectedLocation) {
+        // 캐시가 있다면 즉시 적용
+        applyLocation(cachedLocation)
+    }
+  }, [hasDetectedLocation])
+
+  const applyLocation = (countryCode: string) => {
+    const matchingCity = CITIES.find(c => c.countryCode === countryCode)
+    if (matchingCity) {
+      setSelectedCity(matchingCity)
+    }
+    setHasDetectedLocation(true)
+  }
+
+  const detectAndSetInitialLocation = async () => {
+    let detectedCountry = ""
+
     try {
-      const res = await fetch("https://ipapi.co/json/")
+      // 1. IP 기반 위치 정보 가져오기 (ipwho.is - 안정적인 무료 서비스)
+      const res = await fetch("https://ipwho.is/")
       const data = await res.json()
       
-      if (data.country_code) {
-        // 1. 프로필 업데이트
-        await supabase
-          .from("profiles")
-          .update({ country_code: data.country_code })
-          .eq("id", userId)
-
-        // 2. 현재 국가에 맞춰 초기 도시 설정 (서울 기본값 탈출)
-        // 한국이면 서울, 태국이면 방콕 등으로 매핑 (예시 도시들)
-        const countryToCity: Record<string, string> = {
-          "KR": "Seoul",
-          "TH": "Bangkok",
-          "JP": "Tokyo",
-          "US": "New York",
-          "VN": "Ho Chi Minh City",
-          "DE": "Berlin",
-          "FR": "Paris"
-        }
-
-        const cityName = countryToCity[data.country_code]
-        if (cityName) {
-             // 해당 도시의 좌표를 store에서 찾아 선택하는 로직이 필요하지만, 
-             // 여기서는 임시로 로그만 남기고 실제 구현은 store 데이터를 활용해야 함
-             console.log(`Detected Location: ${cityName} (${data.country_code})`)
-        }
+      if (data && data.country_code) {
+        detectedCountry = data.country_code
       }
     } catch (error) {
-      console.error("Location detection failed:", error)
+      console.warn("IP-based location failed, trying browser locale fallback...")
+      // 2. 백업: 브라우저 언어 설정에서 국가 코드 추출 (예: ko-KR -> KR)
+      const locale = navigator.language || (navigator as any).userLanguage
+      if (locale && locale.includes("-")) {
+        detectedCountry = locale.split("-")[1].toUpperCase()
+      }
     }
+
+    if (detectedCountry) {
+      sessionStorage.setItem("nomad_location_detected", detectedCountry)
+      applyLocation(detectedCountry)
+
+      // 로그인 상태라면 DB 업데이트
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        await supabase
+          .from("profiles")
+          .update({ country_code: detectedCountry })
+          .eq("id", session.user.id)
+      }
+    } else {
+      // 모든 방법 실패 시 서울 강제 적용 (더 이상의 에러 방지)
+      setHasDetectedLocation(true)
+    }
+  }
+
+  // 로그인이 감지될 때 다시 한번 위치 업데이트 (세션 보장용)
+  const updateUserLocation = async (userId: string) => {
+    const cached = sessionStorage.getItem("nomad_location_detected")
+    if (cached) {
+        await supabase.from("profiles").update({ country_code: cached }).eq("id", userId)
+        return
+    }
+    // 캐시 없을 때만 시도
+    detectAndSetInitialLocation()
   }
 
   const isLoginModalOpen = useStore((state) => state.isLoginModalOpen)
