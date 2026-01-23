@@ -341,6 +341,18 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
             return
         }
 
+        // [추가] 시스템 메시지 전송 (마지막 인사)
+        try {
+             await supabase.from('group_messages').insert({
+                room_id: chat.id,
+                user_id: user.id,
+                content: `[SYSTEM] ${profile?.username || 'Unknown'}님이 나갔습니다.`
+            })
+        } catch (msgErr) {
+            console.error('Failed to send leave message', msgErr)
+            // 메시지 전송 실패해도 나가기는 진행
+        }
+
         // 2. 삭제 시도 (ID가 있으면 ID로, 없으면 기존 방식)
         let deleteQuery = supabase.from('room_members').delete({ count: 'exact' })
         
@@ -435,6 +447,23 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
           </div>
         ) : (
           messages.map((msg) => {
+            // [SYSTEM] 메시지 처리
+            if (msg.content.startsWith('[SYSTEM]')) {
+                return (
+                    <motion.div 
+                        key={msg.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex justify-center my-4"
+                    >
+                        <span className="px-3 py-1 bg-white/5 rounded-full text-[10px] text-white/30 font-mono tracking-tighter border border-white/5 flex items-center gap-2">
+                             <LogOut className="w-3 h-3" />
+                            {msg.content.replace('[SYSTEM]', '').trim()}
+                        </span>
+                    </motion.div>
+                )
+            }
+
             // sender_id(DM) 혹은 user_id(Group) 체크
             const senderId = msg.sender_id || msg.user_id
             const isOwn = senderId === user?.id
