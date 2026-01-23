@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/store/useAuth"
 import { useStore } from "@/store/useStore"
-import { UserCheck, UserX, MessageSquare, Loader2, UserPlus, Heart } from "lucide-react"
+import { UserCheck, UserX, MessageSquare, Loader2, UserPlus, Heart, Users } from "lucide-react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
 
@@ -15,14 +15,53 @@ interface Friend {
   isRequester: boolean
 }
 
+interface ChatRoom {
+  id: string
+  name: string
+  created_by: string
+  member_count?: number
+}
+
 export default function FriendsList() {
   const { user } = useAuth()
   const [friends, setFriends] = useState<Friend[]>([])
+  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([])
   const [loading, setLoading] = useState(true)
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [processingId, setProcessingId] = useState<string | null>(null)
+
+  const fetchChatRooms = async () => {
+    if (!user) return
+    
+    // 1. 내가 멤버로 속한 방 ID들 가져오기
+    const { data: memberData } = await supabase
+      .from('room_members')
+      .select('room_id')
+      .eq('user_id', user.id)
+    
+    if (!memberData || memberData.length === 0) {
+      setChatRooms([])
+      return
+    }
+
+    const roomIds = memberData.map(r => r.room_id)
+
+    // 2. 방 정보 가져오기
+    const { data: rooms, error } = await supabase
+      .from('chat_rooms')
+      .select('*')
+      .in('id', roomIds)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching rooms:', error)
+      return
+    }
+
+    setChatRooms(rooms || [])
+  }
 
   const fetchFriends = async (isInitial = false) => {
     if (!user) return
@@ -66,8 +105,9 @@ export default function FriendsList() {
   useEffect(() => {
     if (user) {
       fetchFriends(true)
+      fetchChatRooms()
       
-      const channel = supabase
+      const friendsChannel = supabase
         .channel('friendships_changes')
         .on('postgres_changes', { 
           event: '*', 
@@ -77,9 +117,16 @@ export default function FriendsList() {
           fetchFriends(false) 
         })
         .subscribe()
+        
+      const roomChannel = supabase
+        .channel('room_changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'room_members', filter: `user_id=eq.${user.id}` }, () => fetchChatRooms())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, () => fetchChatRooms())
+        .subscribe()
 
       return () => {
-        supabase.removeChannel(channel)
+        supabase.removeChannel(friendsChannel)
+        supabase.removeChannel(roomChannel)
       }
     }
   }, [user])
@@ -126,11 +173,13 @@ export default function FriendsList() {
     setIsCreating(true)
     try {
       const roomName = `${user.email?.split('@')[0]}님의 그룹`
+      console.log('🔍 Creating room with user.id:', user.id)
       const { data: room, error: roomError } = await supabase
         .from('chat_rooms')
         .insert({ name: roomName, created_by: user.id })
         .select()
         .single()
+      console.log('📦 Room creation result:', { room, error: roomError })
 
       if (roomError) throw roomError
 
@@ -159,6 +208,7 @@ export default function FriendsList() {
       toast.error("방 생성 실패: " + err.message)
     } finally {
       setIsCreating(false)
+      fetchChatRooms() // 방 목록 갱신
     }
   }
 
@@ -213,6 +263,50 @@ export default function FriendsList() {
             채팅 시작
           </button>
         </motion.div>
+      )}
+
+      {/* Group Chats */}
+      {chatRooms.length > 0 && !isSelectionMode && (
+        <section>
+          <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
+             <MessageSquare className="w-3 h-3" /> Group Chats
+          </h3>
+          <div className="space-y-2">
+            {chatRooms.map(room => (
+              <div 
+                key={room.id}
+                onClick={() => {
+                  useStore.getState().setActiveChat({
+                    type: 'group',
+                    id: room.id,
+                    name: room.name
+                  })
+                  useStore.getState().resetUnread('room', room.id)
+                }}
+                className="flex items-center justify-between p-3 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors uppercase tracking-tighter">
+                      {room.name}
+                    </p>
+                    <p className="text-[10px] text-white/30 uppercase font-mono">
+                      Group Chat
+                    </p>
+                  </div>
+                </div>
+                {useStore.getState().unreadState.rooms[room.id] > 0 && (
+                   <span className="w-5 h-5 bg-red-500 text-white text-[9px] flex items-center justify-center rounded-full border border-slate-900 shadow-lg font-bold">
+                      {useStore.getState().unreadState.rooms[room.id]}
+                   </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Pending Requests */}

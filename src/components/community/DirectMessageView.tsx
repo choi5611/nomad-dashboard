@@ -10,13 +10,25 @@ import { useStore } from "@/store/useStore"
 
 interface DMMessage {
   id: string
-  sender_id: string
+  sender_id?: string  // DM
+  user_id?: string    // Group
   receiver_id?: string
   room_id?: string
   content: string
   is_anonymous?: boolean
   nickname?: string
   created_at: string
+  // Joined fields
+  sender?: {
+    username: string
+    avatar_url: string | null
+    country_code?: string
+  }
+  profiles?: {
+    username: string
+    avatar_url: string | null
+    country_code?: string
+  }
 }
 
 interface DirectMessageViewProps {
@@ -57,15 +69,36 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
     const fetchMessages = async () => {
       setLoading(true)
       try {
-        let query = supabase.from('direct_messages').select('*')
+        let data, error
         
         if (chat.type === 'dm') {
-          query = query.or(`and(sender_id.eq.${user.id},receiver_id.eq.${chat.id}),and(sender_id.eq.${chat.id},receiver_id.eq.${user.id})`)
+          const result = await supabase
+            .from('direct_messages')
+            .select('*')
+            .or(`and(sender_id.eq.${user.id},receiver_id.eq.${chat.id}),and(sender_id.eq.${chat.id},receiver_id.eq.${user.id})`)
+            .order('created_at', { ascending: true })
+          data = result.data
+          error = result.error
+        } else if (chat.type === 'group') {
+          // 그룹 채팅은 group_messages 테이블 사용
+          const result = await supabase
+            .from('group_messages')
+            .select('*, sender:profiles(username, avatar_url)')
+            .eq('room_id', chat.id)
+            .order('created_at', { ascending: true })
+          data = result.data
+          error = result.error
         } else {
-          query = query.eq('room_id', chat.id)
+          // 오픈 채팅은 direct_messages 사용
+          const result = await supabase
+            .from('direct_messages')
+            .select('*')
+            .eq('room_id', chat.id)
+            .order('created_at', { ascending: true })
+          data = result.data
+          error = result.error
         }
 
-        const { data, error } = await query.order('created_at', { ascending: true })
         if (error) throw error
         setMessages(data || [])
       } catch (err) {
@@ -83,6 +116,7 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
     resetUnread(chat.type === 'dm' ? 'dm' : 'room', chat.id)
 
     // 2. 실시간 구독
+    const tableName = chat.type === 'group' ? 'group_messages' : 'direct_messages'
     const filterConfig = chat.type === 'dm' 
       ? `receiver_id=eq.${user.id}` 
       : `room_id=eq.${chat.id}`
@@ -91,7 +125,7 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
       chatType: chat.type,
       chatId: chat.id,
       userId: user.id,
-      filter: filterConfig
+      tableName
     })
 
     const channel = supabase
@@ -99,41 +133,38 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
-        table: 'direct_messages',
+        table: tableName,
         filter: filterConfig
-      }, (payload) => {
-        const newMessage = payload.new as DMMessage
+      }, async (payload) => {
+        const newMessage = payload.new as any
         
-        console.log('📨 Received realtime message:', {
-          messageId: newMessage.id,
-          senderId: newMessage.sender_id,
-          currentUserId: user.id,
-          content: newMessage.content,
-          roomId: newMessage.room_id,
-          receiverId: newMessage.receiver_id
-        })
-        
-        // DM의 경우 추가 필터링 (sender가 chat.id인지 확인)
-        if (chat.type === 'dm' && newMessage.sender_id !== chat.id) {
-          console.log('❌ Filtered out: DM sender mismatch')
-          return
+        // 그룹 메시지의 경우 sender 정보가 필요할 수 있음
+        if (chat.type === 'group' && !newMessage.sender) {
+             const { data } = await supabase
+            .from('profiles')
+            .select('username, avatar_url')
+            .eq('id', newMessage.sender_id || newMessage.user_id) // user_id might be used in group_messages
+            .single()
+            if (data) newMessage.sender = data
         }
+
+        console.log('📨 Received realtime message:', newMessage)
         
-        // 본인이 보낸 메시지는 이미 낙관적 업데이트로 추가되어 있음
-        if (newMessage.sender_id === user.id) {
-          console.log('✅ Own message - replacing optimistic update')
-          // 낙관적 업데이트의 임시 메시지를 실제 메시지로 교체
-          setMessages(prev => {
+        // DM의 경우 추가 필터링
+        if (chat.type === 'dm' && newMessage.sender_id !== chat.id) return
+        
+        // 본인이 보낸 메시지는 낙관적 업데이트 처리 (ID 교체 등)
+        const senderId = newMessage.sender_id || newMessage.user_id
+        if (senderId === user.id) {
+           setMessages(prev => {
             const tempMsgIndex = prev.findIndex(m => 
               m.sender_id === user.id && 
               m.content === newMessage.content &&
               Math.abs(new Date(m.created_at).getTime() - new Date(newMessage.created_at).getTime()) < 5000
             )
-            
             if (tempMsgIndex !== -1) {
-              // 임시 메시지를 실제 메시지로 교체
               const updated = [...prev]
-              updated[tempMsgIndex] = newMessage
+              updated[tempMsgIndex] = { ...updated[tempMsgIndex], ...newMessage } // ID 등 업데이트
               return updated
             }
             return prev
@@ -141,35 +172,21 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
           return
         }
 
-        // 다른 사람의 메시지만 추가
-        console.log('✅ Adding message from other user')
+        // 다른 사람 메시지 추가
         useStore.getState().resetUnread(chat.type === 'dm' ? 'dm' : 'room', chat.id)
-        
         setMessages(prev => {
-          // 중복 체크
-          if (prev.some(m => m.id === newMessage.id)) {
-            console.log('⚠️ Duplicate message, skipping')
-            return prev
-          }
-          console.log('✅ Message added to state')
+          if (prev.some(m => m.id === newMessage.id)) return prev
           return [...prev, newMessage]
         })
       })
-      .subscribe((status) => {
-        console.log('🔌 Subscription status:', status)
-      })
+      .subscribe()
 
     return () => {
-      console.log('🔌 Unsubscribing from channel:', chat.id)
       supabase.removeChannel(channel)
     }
   }, [user, chat.id, chat.type])
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [messages])
+  // ... (scroll effect)
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -194,29 +211,36 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
     setInputValue("")
 
     try {
-      const insertData: any = {
-        sender_id: user.id,
-        content,
-        is_anonymous: isAnon,
-        nickname: isAnon ? anonNickname : null
-      }
-      
-      if (chat.type === 'dm') {
-        insertData.receiver_id = chat.id
+      if (chat.type === 'group') {
+          // 그룹 메시지는 group_messages 테이블 사용
+          const { error } = await supabase.from('group_messages').insert({
+              room_id: chat.id,
+              user_id: user.id, // group_messages uses user_id as sender
+              content
+          })
+          if (error) throw error
       } else {
-        insertData.room_id = chat.id
-      }
+          // DM 및 오픈 채팅
+          const insertData: any = {
+            sender_id: user.id,
+            content,
+            is_anonymous: isAnon,
+            nickname: isAnon ? anonNickname : null
+          }
+          
+          if (chat.type === 'dm') {
+            insertData.receiver_id = chat.id
+          } else {
+            insertData.room_id = chat.id
+          }
 
-      const { error } = await supabase.from('direct_messages').insert(insertData)
-      if (error) {
-        console.error('❌ Supabase Insert Error:', error)
-        console.error('📦 Insert Data:', insertData)
-        throw error
+          const { error } = await supabase.from('direct_messages').insert(insertData)
+          if (error) throw error
       }
     } catch (err: any) {
       console.error('❌ Message Send Failed:', err)
       setMessages(prev => prev.filter(m => m.id !== tempId))
-      toast.error(`전송 실패: ${err.message || '알 수 없는 오류'}`)
+      toast.error(`전송 실패: ${err.message}`)
     }
   }
 
@@ -272,7 +296,17 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
           </div>
         ) : (
           messages.map((msg) => {
-            const isOwn = msg.sender_id === user?.id
+            // sender_id(DM) 혹은 user_id(Group) 체크
+            const senderId = msg.sender_id || msg.user_id
+            const isOwn = senderId === user?.id
+            
+            // 프로필 정보: msg.profiles(DM) 혹은 msg.sender(Group)
+            // 혹은 실시간 메시지의 경우 msg.sender 객체가 직접 있을 수 있음
+            const senderProfile = msg.sender || (msg.profiles as any)
+            const username = senderProfile?.username || msg.nickname || 'Unknown'
+            const avatarUrl = senderProfile?.avatar_url
+            const countryCode = senderProfile?.country_code
+            
             return (
               <motion.div
                 key={msg.id}
@@ -281,9 +315,15 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
                 className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}
               >
                 {!isOwn && (
-                    <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest mb-1 px-1">
-                        {msg.is_anonymous ? msg.nickname : (chat.type === 'group' ? 'Member' : chat.name)}
-                    </span>
+                    <div className="flex items-center gap-2 mb-1 px-1">
+                        {avatarUrl && (
+                            <img src={avatarUrl} className="w-4 h-4 rounded-full bg-slate-800 object-cover" />
+                        )}
+                        <span className="text-[9px] font-bold text-white/50 uppercase tracking-widest flex items-center gap-1">
+                            {countryCode && <span>{countryCode}</span>}
+                            {msg.is_anonymous ? msg.nickname : username}
+                        </span>
+                    </div>
                 )}
                 <div className={`max-w-[85%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
                   <div className={`px-4 py-2.5 rounded-2xl text-xs font-mono shadow-lg border ${
