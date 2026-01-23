@@ -157,9 +157,25 @@ function App() {
       })
       .subscribe()
 
+    // 3. 그룹 채팅(group_messages) 구독
+    const groupChannel = supabase.channel('global-group-tracker')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'group_messages'
+      }, (payload) => {
+        const { isChatOpen, activeChat, activeTab } = useStore.getState()
+        if (payload.new.user_id !== currentUserId) {
+             const isVisible = isChatOpen && activeTab === 'friends' && activeChat?.type === 'group' && activeChat?.id === payload.new.room_id
+             if (!isVisible) incrementUnread('room', payload.new.room_id)
+        }
+      })
+      .subscribe()
+
     return () => {
       supabase.removeChannel(cityChannel)
       supabase.removeChannel(dmChannel)
+      supabase.removeChannel(groupChannel)
     }
   }, [user])
 

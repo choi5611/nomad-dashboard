@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
-import { Send, ChevronLeft, Loader2, Sparkles } from "lucide-react"
+import { Send, ChevronLeft, Loader2, Sparkles, ArrowDown } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/store/useAuth"
 import { toast } from "sonner"
@@ -47,7 +47,12 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
   const [inputValue, setInputValue] = useState("")
   const [loading, setLoading] = useState(true)
   const [anonNickname, setAnonNickname] = useState<string>("")
+  
+  // Smart Scroll States
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [showNewMessageAlert, setShowNewMessageAlert] = useState(false)
+  const [isUserScrolledUp, setIsUserScrolledUp] = useState(false)
+  const lastMessageIdRef = useRef<string | null>(null)
 
   // 익명 닉네임 설정
   useEffect(() => {
@@ -72,11 +77,20 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
         let data, error
         
         if (chat.type === 'dm') {
+          // console.log('🔍 Fetching DM messages for:', { userId: user.id, chatId: chat.id })
+          
           const result = await supabase
             .from('direct_messages')
-            .select('*')
+            .select('*, sender:profiles!sender_id(username, avatar_url, country_code)')
             .or(`and(sender_id.eq.${user.id},receiver_id.eq.${chat.id}),and(sender_id.eq.${chat.id},receiver_id.eq.${user.id})`)
             .order('created_at', { ascending: true })
+          
+          // console.log('📦 DM Fetch Result:', result)
+          
+          if (result.error) {
+              console.error('❌ DM Fetch Error:', result.error)
+              throw result.error
+          }
           data = result.data
           error = result.error
         } else if (chat.type === 'group') {
@@ -186,7 +200,57 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
     }
   }, [user, chat.id, chat.type])
 
-  // ... (scroll effect)
+  // --- Smart Scroll Logic ---
+  
+  // 1. 스크롤 이벤트 핸들링: 사용자가 위로 올렸는지 감지
+  const handleScroll = () => {
+    if (!scrollRef.current) return
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current
+    
+    // 바닥에서 50px 이상 떨어져 있으면 "올려본 상태"로 간주
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50
+    setIsUserScrolledUp(!isAtBottom)
+
+    // 바닥에 도달하면 새 메시지 알림 끄기
+    if (isAtBottom) {
+      setShowNewMessageAlert(false)
+    }
+  }
+
+  // 2. 메시지가 추가될 때의 스크롤 동작
+  useEffect(() => {
+    if (!scrollRef.current || messages.length === 0) return
+
+    const lastMsg = messages[messages.length - 1]
+    const isNew = lastMsg.id !== lastMessageIdRef.current
+    lastMessageIdRef.current = lastMsg.id
+
+    if (!isNew) return // 초기 로딩 등 변화 없을 땐 패스
+
+    // 내 메시지면 무조건 내리기
+    if (lastMsg.sender_id === user?.id || lastMsg.user_id === user?.id) {
+        scrollToBottom()
+        return
+    }
+
+    // 다른 사람 메시지일 때
+    if (isUserScrolledUp) {
+        // 보고 있는 위치가 위쪽이면 알림만 띄움
+        setShowNewMessageAlert(true)
+    } else {
+        // 보고 있는 위치가 바닥이면 같이 내림
+        scrollToBottom()
+    }
+  }, [messages, user?.id, isUserScrolledUp])
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+        scrollRef.current.scrollTo({
+            top: scrollRef.current.scrollHeight,
+            behavior: "smooth"
+        })
+    }
+  }
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -209,6 +273,9 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
     
     setMessages(prev => [...prev, optimisticMsg])
     setInputValue("")
+    
+    // 메시지 전송 직후 스크롤 강제 이동 (useEffect보다 확실하게)
+    setTimeout(scrollToBottom, 10)
 
     try {
       if (chat.type === 'group') {
@@ -287,7 +354,8 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
       {/* Messages */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar scroll-smooth"
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar scroll-smooth relative"
       >
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-white/20">
@@ -345,8 +413,24 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
         )}
       </div>
 
+      {/* New Message Alert Trigger */}
+      {showNewMessageAlert && (
+        <div className="absolute bottom-[80px] left-0 right-0 flex justify-center z-10 pointer-events-none">
+            <button 
+                onClick={() => {
+                    scrollToBottom()
+                    setShowNewMessageAlert(false)
+                }}
+                className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-cyan-500 text-white rounded-full shadow-lg shadow-cyan-500/20 text-xs font-bold animate-bounce"
+            >
+                <ArrowDown className="w-3 h-3" />
+                New Message
+            </button>
+        </div>
+      )}
+
       {/* Input Area */}
-      <div className={`p-4 border-t border-white/10 bg-black/40`}>
+      <div className={`p-4 border-t border-white/10 bg-black/40 relative z-20`}>
         <form onSubmit={handleSendMessage} className="relative">
           <input
             type="text"
