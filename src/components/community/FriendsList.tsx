@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/store/useAuth"
 import { useStore } from "@/store/useStore"
-import { UserCheck, UserX, MessageSquare, Loader2, UserPlus, Heart, Users, UserMinus } from "lucide-react"
+import { UserCheck, UserX, MessageSquare, Loader2, UserPlus, Heart, Users, UserMinus, Pencil, Check, X } from "lucide-react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
 
@@ -20,6 +20,7 @@ interface ChatRoom {
   name: string
   created_by: string
   member_count?: number
+  custom_name?: string | null
 }
 
 export default function FriendsList() {
@@ -31,22 +32,25 @@ export default function FriendsList() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [isCreating, setIsCreating] = useState(false)
   const [processingId, setProcessingId] = useState<string | null>(null)
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null)
+  const [editingName, setEditingName] = useState("")
 
   const fetchChatRooms = async () => {
     if (!user) return
-    
-    // 1. 내가 멤버로 속한 방 ID들 가져오기
+
+    // 1. 내가 멤버로 속한 방 ID들 + custom_name 가져오기
     const { data: memberData } = await supabase
       .from('room_members')
-      .select('room_id')
+      .select('room_id, custom_name')
       .eq('user_id', user.id)
-    
+
     if (!memberData || memberData.length === 0) {
       setChatRooms([])
       return
     }
 
     const roomIds = memberData.map(r => r.room_id)
+    const customNames = new Map(memberData.map(r => [r.room_id, r.custom_name]))
 
     // 2. 방 정보 가져오기
     const { data: rooms, error } = await supabase
@@ -60,8 +64,13 @@ export default function FriendsList() {
       return
     }
 
-    console.log('🏘️ Fetched Chat Rooms:', rooms?.length)
-    setChatRooms(rooms || [])
+    // 3. custom_name 병합
+    const roomsWithCustomName = (rooms || []).map(room => ({
+      ...room,
+      custom_name: customNames.get(room.id) || null
+    }))
+
+    setChatRooms(roomsWithCustomName)
   }
 
   const fetchFriends = async (isInitial = false) => {
@@ -236,6 +245,36 @@ export default function FriendsList() {
     }
   }
 
+  const handleUpdateRoomName = async (roomId: string) => {
+
+    if (!user || !editingName.trim()) {
+      setEditingRoomId(null)
+      return
+    }
+
+    try {
+     
+
+      const { data, error } = await supabase
+        .from('room_members')
+        .update({ custom_name: editingName.trim() })
+        .eq('room_id', roomId)
+        .eq('user_id', user.id)
+        .select()
+
+
+      if (error) throw error
+
+      toast.success("채팅방 이름이 변경되었습니다!")
+      setEditingRoomId(null)
+      setEditingName("")
+      fetchChatRooms()
+    } catch (err: any) {
+      console.error('❌ Update error:', err)
+      toast.error("이름 변경 실패: " + err.message)
+    }
+  }
+
   const pendingRequests = friends.filter(f => f.status === 'pending' && !f.isRequester)
   const acceptedFriends = friends.filter(f => f.status === 'accepted')
   const sentRequests = friends.filter(f => f.status === 'pending' && f.isRequester)
@@ -297,15 +336,17 @@ export default function FriendsList() {
           </h3>
           <div className="space-y-2">
             {chatRooms.map(room => (
-              <div 
+              <div
                 key={room.id}
                 onClick={() => {
-                  useStore.getState().setActiveChat({
-                    type: 'group',
-                    id: room.id,
-                    name: room.name
-                  })
-                  useStore.getState().resetUnread('room', room.id)
+                  if (editingRoomId !== room.id) {
+                    useStore.getState().setActiveChat({
+                      type: 'group',
+                      id: room.id,
+                      name: room.custom_name || room.name
+                    })
+                    useStore.getState().resetUnread('room', room.id)
+                  }
                 }}
                 className="flex items-center justify-between p-3 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all cursor-pointer group"
               >
@@ -313,10 +354,51 @@ export default function FriendsList() {
                   <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
                     <Users className="w-5 h-5" />
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors uppercase tracking-tighter">
-                      {room.name}
-                    </p>
+                  <div className="flex-1 min-w-0">
+                    {editingRoomId === room.id ? (
+                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={e => setEditingName(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') handleUpdateRoomName(room.id)
+                            if (e.key === 'Escape') setEditingRoomId(null)
+                          }}
+                          className="bg-white/10 border border-purple-500/50 rounded-lg px-2 py-1 text-sm text-white w-32 focus:outline-none focus:border-purple-400"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleUpdateRoomName(room.id)}
+                          className="p-1 hover:bg-green-500/20 rounded text-green-400"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setEditingRoomId(null)}
+                          className="p-1 hover:bg-red-500/20 rounded text-red-400"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors uppercase tracking-tighter truncate">
+                          {room.custom_name || room.name}
+                        </p>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingRoomId(room.id)
+                            setEditingName(room.custom_name || room.name)
+                          }}
+                          className="p-1 opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded text-white/40 hover:text-white transition-all"
+                          title="이름 변경"
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
                     <p className="text-[10px] text-white/30 uppercase font-mono">
                       Group Chat
                     </p>
