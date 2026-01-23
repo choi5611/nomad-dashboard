@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/store/useAuth"
 import { useStore } from "@/store/useStore"
-import { UserCheck, UserX, MessageSquare, Loader2, UserPlus, Heart, Users } from "lucide-react"
+import { UserCheck, UserX, MessageSquare, Loader2, UserPlus, Heart, Users, UserMinus } from "lucide-react"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
 
@@ -167,6 +167,29 @@ export default function FriendsList() {
         ? prev.filter(id => id !== friendId) 
         : [...prev, friendId]
     )
+  }
+
+  const handleDeleteFriend = async (friendshipId: string, friendName: string) => {
+    if (processingId) return
+    
+    // 확인 없이 조용히 삭제
+    setProcessingId(friendshipId)
+    
+    try {
+      const { error } = await supabase
+        .from('friendships')
+        .delete()
+        .eq('id', friendshipId)
+      
+      if (error) throw error
+      
+      toast.success(`${friendName}님과의 친구 관계가 해제되었습니다.`)
+      await fetchFriends(false)
+    } catch (err: any) {
+      toast.error("삭제 실패: " + err.message)
+    } finally {
+      setProcessingId(null)
+    }
   }
 
   const handleCreateGroup = async () => {
@@ -351,6 +374,8 @@ export default function FriendsList() {
                 isSelected={selectedIds.includes(friend.id)}
                 isSelectionMode={isSelectionMode}
                 onSelect={() => toggleSelection(friend.id)}
+                onDelete={() => handleDeleteFriend(friend.friendship_id, friend.username)}
+                isProcessing={processingId === friend.friendship_id}
                 onChat={() => {
                   useStore.getState().setActiveChat({
                     type: 'dm',
@@ -387,6 +412,7 @@ function FriendItem({
   onAccept, 
   onReject, 
   onChat,
+  onDelete,
   isSent,
   isSelected,
   isSelectionMode,
@@ -398,6 +424,7 @@ function FriendItem({
   onAccept?: () => void, 
   onReject?: () => void,
   onChat?: () => void,
+  onDelete?: () => void,
   isSent?: boolean,
   isSelected?: boolean,
   isSelectionMode?: boolean,
@@ -472,6 +499,16 @@ function FriendItem({
                 {unreadCount}
               </span>
             )}
+          </button>
+        )}
+        {onDelete && !isSelectionMode && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            disabled={isProcessing}
+            className="p-2 bg-white/5 text-white/30 hover:bg-red-500/20 hover:text-red-400 rounded-lg transition-all disabled:opacity-50"
+            title="친구 삭제"
+          >
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserMinus className="w-4 h-4" />}
           </button>
         )}
       </div>

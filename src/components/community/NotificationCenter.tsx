@@ -11,7 +11,7 @@ interface Notification {
   created_at: string
   type: 'like' | 'comment' | 'friend_request'
   is_read: boolean
-  post_id: string
+  post_id?: string | null  // Optional: friend_request doesn't have post_id
   sender_id: string
   sender_profile: {
     username: string

@@ -341,7 +341,9 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
             return
         }
 
-        // [추가] 시스템 메시지 전송 (마지막 인사)
+        // [중요] 시스템 메시지를 먼저 전송
+        // App.tsx의 incrementUnread 로직이 이미 본인 메시지(user_id === currentUserId)는 카운트하지 않으므로
+        // 나가는 사람은 자신의 나가기 메시지로 인한 알림을 받지 않음
         try {
              await supabase.from('group_messages').insert({
                 room_id: chat.id,
@@ -353,7 +355,7 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
             // 메시지 전송 실패해도 나가기는 진행
         }
 
-        // 2. 삭제 시도 (ID가 있으면 ID로, 없으면 기존 방식)
+        // 2. 멤버십 삭제 (ID가 있으면 ID로, 없으면 기존 방식)
         let deleteQuery = supabase.from('room_members').delete({ count: 'exact' })
         
         if (memberData.id) {

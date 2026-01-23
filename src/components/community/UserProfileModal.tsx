@@ -102,13 +102,17 @@ export default function UserProfileModal({ userId, isOpen, onClose }: UserProfil
       setFriendStatus('pending_sent')
       toast.success("친구 요청을 보냈습니다!")
       
-      // 알림 전송
-      await supabase.from('notifications').insert({
+      // 알림 전송 (실패해도 친구 요청은 성공)
+      const { error: notifError } = await supabase.from('notifications').insert({
         receiver_id: userId,
         sender_id: currentUser.id,
         type: 'friend_request',
-        content: '친구 요청이 도착했습니다.'
+        post_id: null
       })
+
+      if (notifError) {
+        console.error('Notification send failed:', notifError)
+      }
       
     } catch (error: any) {
       toast.error("요청 실패: " + error.message)
