@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
-import { Send, ChevronLeft, Loader2, Sparkles, ArrowDown } from "lucide-react"
+import { Send, ChevronLeft, Loader2, Sparkles, ArrowDown, LogOut } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/store/useAuth"
 import { toast } from "sonner"
+import ConfirmModal from "@/components/ui/ConfirmModal"
 
 import { generateRandomNickname } from "@/utils/nicknameUtils"
 import { useStore } from "@/store/useStore"
@@ -45,6 +46,7 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
   const { user, profile } = useAuth()
   const [messages, setMessages] = useState<DMMessage[]>([])
   const [inputValue, setInputValue] = useState("")
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [anonNickname, setAnonNickname] = useState<string>("")
   
@@ -311,6 +313,64 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
     }
   }
 
+  const handleLeaveChat = async () => {
+    if (!chat.type || chat.type !== 'group' || !user) return
+    
+    console.log('🚪 Attempting to leave chat:', {
+        roomId: chat.id,
+        userId: user.id
+    })
+
+    try {
+        // 1. 멤버십 조회 (존재 여부 및 ID 확인)
+        const { data: memberData, error: fetchError } = await supabase
+            .from('room_members')
+            .select('*')
+            .eq('room_id', chat.id)
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+        console.log('🔍 Membership Check:', { memberData, fetchError })
+
+        if (fetchError) throw fetchError
+        
+        if (!memberData) {
+            toast.error("멤버 정보를 찾을 수 없습니다. (이미 나갔거나 접근 권한 없음)")
+            // 목록 갱신을 위해 뒤로 가기
+            onBack()
+            return
+        }
+
+        // 2. 삭제 시도 (ID가 있으면 ID로, 없으면 기존 방식)
+        let deleteQuery = supabase.from('room_members').delete({ count: 'exact' })
+        
+        if (memberData.id) {
+            console.log('🎯 Deleting by Primary Key ID:', memberData.id)
+            deleteQuery = deleteQuery.eq('id', memberData.id)
+        } else {
+            console.log('🎯 Deleting by Composite Key')
+            deleteQuery = deleteQuery.eq('room_id', chat.id).eq('user_id', user.id)
+        }
+
+        const { error: deleteError, count } = await deleteQuery
+            
+        console.log('🗑️ Delete Result:', { deleteError, count })
+
+        if (deleteError) throw deleteError
+        
+        if (count === 0) {
+            toast.error("삭제 실패: 권한(RLS) 부족 가능성이 있습니다.")
+            return
+        }
+        
+        toast.success("채팅방을 나갔습니다.")
+        onBack()
+    } catch (err: any) {
+        console.error('❌ Leave Chat Error:', err)
+        toast.error("오류 발생: " + err.message)
+    }
+  }
+
   const isThemeAmber = chat.type === 'open'
 
   return (
@@ -348,7 +408,18 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
               {chat.type === 'open' && <span className="ml-2 text-white/40">as {anonNickname}</span>}
             </p>
           </div>
-        </div>
+          </div>
+        
+        {/* Leave Button (Only for Group Chat) */}
+        {chat.type === 'group' && (
+            <button 
+                onClick={() => setIsLeaveModalOpen(true)}
+                className="p-2 hover:bg-red-500/10 rounded-lg text-white/30 hover:text-red-400 transition-all group relative"
+                title="Leave Chat"
+            >
+                <LogOut className="w-4 h-4" />
+            </button>
+        )}
       </div>
 
       {/* Messages */}
@@ -452,6 +523,16 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
           </button>
         </form>
       </div>
+
+      <ConfirmModal
+        isOpen={isLeaveModalOpen}
+        title="Leave Group Chat"
+        message="정말 이 채팅방을 나가시겠습니까? 대화 내용은 더 이상 볼 수 없습니다."
+        confirmText="나가기"
+        cancelText="취소"
+        onConfirm={handleLeaveChat}
+        onClose={() => setIsLeaveModalOpen(false)}
+      />
     </div>
   )
 }

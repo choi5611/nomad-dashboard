@@ -60,6 +60,7 @@ export default function FriendsList() {
       return
     }
 
+    console.log('🏘️ Fetched Chat Rooms:', rooms?.length)
     setChatRooms(rooms || [])
   }
 

@@ -29,6 +29,14 @@ function App() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       
+      // 로그아웃 시 채팅창 닫기 및 상태 초기화
+      if (_event === 'SIGNED_OUT') {
+        const { closeChat, setActiveChat, setActiveTab } = useStore.getState()
+        closeChat()
+        setActiveChat(null)
+        setActiveTab('city') // 기본 탭으로 복귀
+      }
+
       // 로그인이 감지되면 자동으로 국가 업데이트
       if (session?.user) {
         updateUserLocation(session.user.id)
