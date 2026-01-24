@@ -13,7 +13,7 @@ export const OPEN_CHAT_ROOM_IDS = Object.values(OPEN_CHAT_ROOMS)
 
 // 헬퍼 함수: 특정 room_id가 오픈 채팅방인지 확인
 export const isOpenChatRoom = (roomId: string): boolean => {
-  return OPEN_CHAT_ROOM_IDS.includes(roomId)
+  return (OPEN_CHAT_ROOM_IDS as string[]).includes(roomId)
 }
 
 // 페이지네이션 설정

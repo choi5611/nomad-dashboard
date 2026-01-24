@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 import type { Comment } from "@/types/comment"
 
 export function useReplyState() {

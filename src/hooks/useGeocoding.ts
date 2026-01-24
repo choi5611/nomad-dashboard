@@ -10,26 +10,27 @@ export function useGeocoding() {
     
     setLoading(true)
     try {
-      // Nominatim API 사용 (오픈소스 지오코딩)
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`)
+      // Photon API 사용 (OSM 기반, Nominatim보다 브라우저 환경에서 안정적)
+      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`)
       const data = await res.json()
+      console.log("🔍 Photon API Search Data:", data)
 
-      const mappedResults: City[] = data
-        .filter((item: any) => item.type === 'city' || item.type === 'town' || item.type === 'administrative')
-        .map((item: any) => ({
-          name: item.display_name.split(',')[0],
-          lat: parseFloat(item.lat),
-          lng: parseFloat(item.lon),
-          timezone: "UTC", // 기본값 (나중에 보정 가능)
-          countryCode: item.address?.country_code?.toUpperCase() || "UN",
-          currencyCode: "USD", // 기본값
+      const mappedResults: City[] = (data.features || [])
+        .map((f: any) => ({
+          name: f.properties.name || f.properties.city || f.properties.state || "Unknown Location",
+          lat: f.geometry.coordinates[1],
+          lng: f.geometry.coordinates[0],
+          timezone: "UTC", 
+          countryCode: f.properties.countrycode?.toUpperCase() || f.properties.country?.substring(0, 2).toUpperCase() || "UN",
+          currencyCode: "USD",
           priority: 3
         }))
 
+      console.log("✅ Mapped Results for UI:", mappedResults)
       setResults(mappedResults)
       return mappedResults
     } catch (error) {
-      console.error("Geocoding failed:", error)
+      console.error("Discovery Search failed:", error)
       return []
     } finally {
       setLoading(false)

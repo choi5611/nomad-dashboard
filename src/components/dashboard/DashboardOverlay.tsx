@@ -1,4 +1,4 @@
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import ClockWidget from "./ClockWidget"
 import ExchangeRateWidget from "./ExchangeRateWidget"
 import WeatherWidget from "./WeatherWidget"
@@ -11,13 +11,21 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { useGeocoding } from "@/hooks/useGeocoding"
-import { AnimatePresence } from "framer-motion"
 
 export default function DashboardOverlay() {
+  // Store selectors - individually picked for stability and less re-renders
   const selectedCity = useStore((state) => state.selectedCity)
+  const setSelectedCity = useStore((state) => state.setSelectedCity)
+  const dbCities = useStore((state) => state.cities)
+  const setDiscoveredCity = useStore((state) => state.setDiscoveredCity)
+  
   const openLoginModal = useStore((state) => state.openLoginModal)
   const openSettings = useStore((state) => state.openSettings)
-  const { isChatOpen, toggleChat, isSidebarOpen, unreadState } = useStore()
+  const isChatOpen = useStore((state) => state.isChatOpen)
+  const toggleChat = useStore((state) => state.toggleChat)
+  const isSidebarOpen = useStore((state) => state.isSidebarOpen)
+  const unreadState = useStore((state) => state.unreadState)
+
   const { user, profile, fetchProfile, loading: authLoading } = useAuth()
   const [hasVisited, setHasVisited] = useState(false)
   const [checkingIn, setCheckingIn] = useState(false)
@@ -27,7 +35,6 @@ export default function DashboardOverlay() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const { searchCity, loading: geoLoading, results: geoResults, setResults: setGeoResults } = useGeocoding()
-  const { setDiscoveredCity, setSelectedCity, cities: dbCities } = useStore()
 
   // 방문 여부 확인
   useEffect(() => {
@@ -82,6 +89,7 @@ export default function DashboardOverlay() {
   }, [user, selectedCity, checkingIn, fetchProfile])
 
   const handleSelectCity = (city: City, isNew: boolean = false) => {
+    console.log("📍 Selecting City:", city.name, isNew ? "(Discovery)" : "(DB)")
     if (isNew) setDiscoveredCity(city)
     setSelectedCity(city)
     setSearchQuery("")
@@ -94,16 +102,13 @@ export default function DashboardOverlay() {
 
   return (
     <div className={`absolute inset-0 z-10 pointer-events-none p-4 md:p-6 flex flex-col justify-between ${isMobile ? 'pt-12 pb-[80px]' : ''}`}>
-      {/* Top Bar: Header & Discovery Search */}
       <header className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
-        {/* Left Section: City Info */}
+        {/* Left: City Info */}
         <div className="pointer-events-auto flex-1 basis-0 min-w-0 w-full md:w-auto">
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
             <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-600 drop-shadow-sm truncate">
                 {selectedCity ? selectedCity.name : "Nomad OS"}
             </h1>
-            
-            {/* Verification Badge/Button */}
             {user && selectedCity && (
                 hasVisited ? (
                     <div className="flex items-center gap-1.5 px-2 py-0.5 md:px-2.5 md:py-1 bg-green-500/10 border border-green-500/30 rounded-full shrink-0">
@@ -133,9 +138,9 @@ export default function DashboardOverlay() {
           </p>
         </div>
 
-        {/* --- Central Discovery Search Bar --- */}
-        <div className="pointer-events-auto flex flex-col items-center w-full max-w-[280px] md:max-w-xs lg:max-w-md px-0 md:px-4 z-20">
-          <div className={`relative w-full flex items-center transition-all duration-300 ${isSearchOpen ? 'bg-slate-900 shadow-2xl ring-1 ring-cyan-500/30' : 'bg-white/5 hover:bg-white/10'} rounded-2xl overflow-hidden`}>
+        {/* Central Search - RELATIVE is KEY! */}
+        <div className="relative pointer-events-auto flex flex-col items-center w-full max-w-[280px] md:max-w-xs lg:max-w-md px-0 md:px-4 z-50">
+          <div className={`relative w-full flex items-center transition-all duration-300 ${isSearchOpen ? 'bg-slate-950 shadow-[0_0_20px_rgba(0,0,0,0.5)] ring-1 ring-cyan-500/30' : 'bg-white/5 hover:bg-white/10'} rounded-2xl overflow-hidden`}>
             <div className="flex-1 flex items-center px-4 py-2.5">
               <Search className={`w-4 h-4 transition-colors ${isSearchOpen ? 'text-cyan-400' : 'text-white/30'}`} />
               <input
@@ -162,41 +167,45 @@ export default function DashboardOverlay() {
             )}
           </div>
 
-          {/* Search Results Dropdown */}
+          {/* Results Dropdown */}
           <AnimatePresence>
             {isSearchOpen && (searchQuery.length >= 2 || geoResults.length > 0) && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="absolute top-full mt-2 w-full max-w-[280px] md:max-w-xs lg:max-w-md bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[300px]"
+                className="absolute top-full left-0 right-0 mt-2 mx-0 md:mx-4 bg-slate-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[300px] z-[60]"
               >
-                {/* 1. DB Matching Cities */}
-                {dbCities.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())).map(city => (
-                  <button
-                    key={`db-${city.name}`}
-                    onClick={() => handleSelectCity(city)}
-                    className="w-full px-4 py-3 text-left hover:bg-white/5 flex items-center justify-between group border-b border-white/5"
-                  >
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">{city.name}</span>
-                      <span className="text-[10px] text-white/40 uppercase">{city.countryCode} • Activated</span>
-                    </div>
-                    <GlobeIcon className="w-4 h-4 text-cyan-500/50 group-hover:text-cyan-400" />
-                  </button>
-                ))}
+                {/* 1. Local Database Match */}
+                {dbCities && dbCities.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())).length > 0 && (
+                  <div className="flex flex-col">
+                    {dbCities.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())).map(city => (
+                      <button
+                        key={`db-${city.name}`}
+                        onClick={() => handleSelectCity(city)}
+                        className="w-full px-4 py-3 text-left hover:bg-white/5 flex items-center justify-between group border-b border-white/5"
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">{city.name}</span>
+                          <span className="text-[10px] text-white/40 uppercase">{city.countryCode} • Activated</span>
+                        </div>
+                        <GlobeIcon className="w-4 h-4 text-cyan-500/50 group-hover:text-cyan-400" />
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-                {/* 2. Global Search Trigger */}
+                {/* 2. Global Discovery Button */}
                 <button
                   onClick={() => searchCity(searchQuery)}
                   disabled={geoLoading}
-                  className="w-full px-4 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-[10px] md:text-xs font-bold flex items-center justify-center gap-2 transition-all"
+                  className="w-full px-4 py-4 bg-cyan-600/10 hover:bg-cyan-600/20 text-cyan-400 text-[10px] md:text-xs font-bold flex items-center justify-center gap-2 transition-all border-b border-white/5"
                 >
                   {geoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                  전 세계 데이터베이스 검색
+                  전 세계 데이터베이스 검색하기
                 </button>
 
-                {/* 3. Global Geocoding Results */}
+                {/* 3. API Results */}
                 <div className="overflow-y-auto no-scrollbar">
                   {geoResults.map((res, i) => (
                     <button
@@ -217,70 +226,31 @@ export default function DashboardOverlay() {
           </AnimatePresence>
         </div>
 
-        {/* Right Section: Widgets (Hidden on Mobile) */}
+        {/* Right Section: Widgets */}
         {!isMobile ? (
           <motion.div 
-            animate={{ 
-              x: (isSidebarOpen ? -384 : 0) + (isChatOpen ? -400 : 0)
-            }}
+            animate={{ x: (isSidebarOpen ? -384 : 0) + (isChatOpen ? -400 : 0) }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
             className="flex-1 basis-0 flex justify-end gap-3 lg:gap-4 pointer-events-auto items-center"
           >
             {selectedCity && <div className="hidden lg:block"><ClockWidget timezone={selectedCity.timezone} /></div>}
-            
-            {/* Auth Button */}
             {user ? (
-              <button
-                onClick={() => openSettings()}
-                className="flex items-center gap-2 p-1.5 pr-3 lg:pr-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all group pointer-events-auto shrink-0"
-              >
-                <img
-                  src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`}
-                  alt="Profile"
-                  className="w-7 h-7 lg:w-8 lg:h-8 rounded-full border border-cyan-500/30"
-                />
-                {authLoading || !profile ? (
-                  <div className="h-4 w-16 lg:w-20 bg-white/10 rounded animate-pulse" />
-                ) : (
-                  <span className="text-xs lg:text-sm font-medium text-white/70 group-hover:text-white truncate max-w-[80px] lg:max-w-[120px]">
-                    {profile.username}
-                  </span>
-                )}
+              <button onClick={() => openSettings()} className="flex items-center gap-2 p-1.5 pr-3 lg:pr-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all group shrink-0">
+                <img src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`} alt="Profile" className="w-7 h-7 lg:w-8 lg:h-8 rounded-full border border-cyan-500/30" />
+                {!profile ? <div className="h-4 w-16 lg:w-20 bg-white/10 rounded animate-pulse" /> : <span className="text-xs lg:text-sm font-medium text-white/70 group-hover:text-white truncate max-w-[80px] lg:max-w-[120px]">{profile.username}</span>}
               </button>
             ) : (
-              <button
-                onClick={openLoginModal}
-                className="px-3 lg:px-4 py-1.5 lg:py-2 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/30 rounded-xl text-cyan-400 text-xs lg:text-sm font-bold transition-all backdrop-blur-md shrink-0"
-              >
-                Login
-              </button>
+              <button onClick={openLoginModal} className="px-3 lg:px-4 py-1.5 lg:py-2 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/30 rounded-xl text-cyan-400 text-xs lg:text-sm font-bold transition-all backdrop-blur-md shrink-0">Login</button>
             )}
-
-            {/* Notification Center */}
-            <div className="pointer-events-auto shrink-0">
-              <NotificationCenter />
-            </div>
-
-            {/* Chat Toggle Button */}
+            <div className="shrink-0"><NotificationCenter /></div>
             <button
               onClick={toggleChat}
-              className={`p-2.5 lg:p-3 rounded-xl border transition-all pointer-events-auto shadow-lg backdrop-blur-md relative shrink-0 ${
-                  isChatOpen 
-                  ? "bg-cyan-500 border-cyan-400 text-white shadow-cyan-500/20" 
-                  : "bg-white/5 border-white/10 text-white/50 hover:text-white hover:bg-white/10"
-              }`}
+              className={`p-2.5 lg:p-3 rounded-xl border transition-all shadow-lg backdrop-blur-md relative shrink-0 ${isChatOpen ? "bg-cyan-500 border-cyan-400 text-white" : "bg-white/5 border-white/10 text-white/50 hover:text-white"}`}
             >
               <MessageSquare className="w-4 h-4 lg:w-5 lg:h-5" />
-              {(unreadState.city + 
-                Object.values(unreadState.dms).reduce((a: number, b: number) => a + b, 0) + 
-                Object.values(unreadState.rooms).reduce((a: number, b: number) => a + b, 0)) > 0 && (
+              {(unreadState.city + Object.values(unreadState.dms).reduce((a, b) => a + b, 0) + Object.values(unreadState.rooms).reduce((a, b) => a + b, 0)) > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 w-4 h-4 lg:w-5 lg:h-5 bg-red-500 text-white text-[8px] lg:text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-slate-900 animate-in zoom-in duration-300">
-                  {(unreadState.city + 
-                    Object.values(unreadState.dms).reduce((a: number, b: number) => a + b, 0) + 
-                    Object.values(unreadState.rooms).reduce((a: number, b: number) => a + b, 0)) > 99 ? '99+' : 
-                    (unreadState.city + 
-                     Object.values(unreadState.dms).reduce((a: number, b: number) => a + b, 0) + 
-                     Object.values(unreadState.rooms).reduce((a: number, b: number) => a + b, 0))}
+                  {(unreadState.city + Object.values(unreadState.dms).reduce((a, b) => a + b, 0) + Object.values(unreadState.rooms).reduce((a, b) => a + b, 0)) > 99 ? '99+' : (unreadState.city + Object.values(unreadState.dms).reduce((a, b) => a + b, 0) + Object.values(unreadState.rooms).reduce((a, b) => a + b, 0))}
                 </span>
               )}
             </button>
@@ -290,7 +260,7 @@ export default function DashboardOverlay() {
         )}
       </header>
 
-      {/* Bottom Widgets */}
+      {/* Footer */}
       <footer className="flex gap-4 items-end pointer-events-auto">
         {selectedCity && <WeatherWidget lat={selectedCity.lat} lng={selectedCity.lng} />}
         {selectedCity && <ExchangeRateWidget targetCurrency={selectedCity.currencyCode} />}

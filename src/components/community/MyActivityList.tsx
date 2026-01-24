@@ -3,8 +3,6 @@ import { useInfinitePosts } from "@/hooks/useInfinitePosts"
 import { useAuth } from "@/store/useAuth"
 import PostCard from "./PostCard"
 import { Loader2, FileText, Heart, MapPin, Utensils, Coffee, AlertTriangle, Building2 } from "lucide-react"
-import { useInView } from "react-intersection-observer"
-import { useEffect } from "react"
 
 const typeIcons = {
   experience: MapPin,
@@ -25,7 +23,6 @@ const typeLabels = {
 export default function MyActivityList() {
   const [activeTab, setActiveTab] = useState<"posts" | "likes">("posts")
   const { user } = useAuth()
-  const { ref, inView } = useInView()
 
   const {
     data,

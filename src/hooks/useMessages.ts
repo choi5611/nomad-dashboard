@@ -14,7 +14,6 @@ export function useMessages(
   profile: Profile | null,
   scrollToBottom: () => void
 ) {
-  const queryClient = useQueryClient()
   const [realtimeMessages, setRealtimeMessages] = useState<DMMessage[]>([])
 
   const {

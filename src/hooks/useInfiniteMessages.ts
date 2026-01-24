@@ -13,7 +13,6 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
       const from = pageParam * PAGE_SIZE
       const to = from + PAGE_SIZE - 1
 
-      let query
       let data, error, count
 
       if (chat.type === 'dm') {
