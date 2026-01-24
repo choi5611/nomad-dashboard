@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { supabase } from '@/lib/supabase'
 
 export interface City {
   name: string
@@ -41,6 +42,11 @@ interface AppState {
   setActiveTab: (tab: 'city' | 'friends' | 'open') => void
   // 모바일 전용 뷰 관리
   setActiveView: (view: 'globe' | 'community' | 'chat' | 'settings') => void
+  // 동적 도시 데이터 관리
+  cities: City[]
+  fetchCities: () => Promise<void>
+  discoveredCity: City | null
+  setDiscoveredCity: (city: City | null) => void
 }
 
 const AUTO_ROTATE_DELAY = 5000 // 5초 후 다시 회전
@@ -122,4 +128,26 @@ export const useStore = create<AppState>((set, get) => ({
     isChatOpen: view === 'chat',
     isSettingsOpen: view === 'settings',
   }),
+  cities: [],
+  fetchCities: async () => {
+    const { data, error } = await supabase
+      .from('cities')
+      .select('*')
+      .order('priority', { ascending: true })
+    
+    if (!error && data) {
+      const mappedCities: City[] = data.map((c: any) => ({
+        name: c.display_name,
+        lat: c.lat,
+        lng: c.lng,
+        timezone: c.timezone,
+        countryCode: c.country_code,
+        currencyCode: c.currency_code,
+        priority: c.priority
+      }))
+      set({ cities: mappedCities })
+    }
+  },
+  discoveredCity: null,
+  setDiscoveredCity: (city) => set({ discoveredCity: city }),
 }))

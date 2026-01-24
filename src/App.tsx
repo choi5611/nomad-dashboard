@@ -9,7 +9,6 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/store/useAuth"
 import { useStore } from "@/store/useStore"
 import { Toaster } from "sonner"
-import { CITIES } from "@/data/cities"
 import { isOpenChatRoom } from "@/lib/constants"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import MobileNav from "@/components/layout/MobileNav"
@@ -20,15 +19,23 @@ function App() {
   const { user } = useAuth()
   const [hasDetectedLocation, setHasDetectedLocation] = useState(false)
   const isMobile = useMediaQuery("(max-width: 767px)")
+  const cities = useStore((state) => state.cities)
+  const fetchCities = useStore((state) => state.fetchCities)
+
+  // 1. 초기 도시 데이터 로드
+  useEffect(() => {
+    fetchCities()
+  }, [fetchCities])
 
   // Helper functions
   const applyLocation = useCallback((countryCode: string) => {
-    const matchingCity = CITIES.find(c => c.countryCode === countryCode)
+    // 💡 이제 DB에서 가져온 cities 배열에서 찾습니다.
+    const matchingCity = cities.find(c => c.countryCode === countryCode)
     if (matchingCity) {
       setSelectedCity(matchingCity, false)
     }
     setHasDetectedLocation(true)
-  }, [setSelectedCity])
+  }, [setSelectedCity, cities])
 
   const detectAndSetInitialLocation = useCallback(async () => {
     let detectedCountry = ""

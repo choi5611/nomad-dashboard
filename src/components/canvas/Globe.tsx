@@ -5,7 +5,6 @@ import * as THREE from "three"
 import Pin from "./Pin"
 import { GLOBE_RADIUS } from "./math"
 import { useStore, type City } from "@/store/useStore"
-import { CITIES } from "@/data/cities"
 
 // 국가 코드 -> 한글 국가명 매핑 (주요 국가만 예시로)
 const COUNTRY_NAMES: Record<string, string> = {
@@ -65,6 +64,8 @@ export default function Globe({ onSelectPin }: GlobeProps) {
   const groupRef = useRef<THREE.Group>(null)
   const setSelectedCity = useStore((state) => state.setSelectedCity)
   const isAutoRotating = useStore((state) => state.isAutoRotating)
+  const cities = useStore((state) => state.cities)
+  const discoveredCity = useStore((state) => state.discoveredCity)
   const [cameraDistance, setCameraDistance] = useState(20)
 
   // 텍스처 로드
@@ -78,14 +79,14 @@ export default function Globe({ onSelectPin }: GlobeProps) {
   const visibleCities = useMemo(() => {
     if (cameraDistance > 25) {
       // 아주 멀리 있을 때: 국가 대표 도시(Priority 1)만 표시
-      return CITIES.filter(c => (c.priority || 3) === 1)
+      return cities.filter(c => (c.priority || 3) === 1)
     } else if (cameraDistance > 15) {
       // 중간 거리: 주요 도시(Priority 1, 2) 표시
-      return CITIES.filter(c => (c.priority || 3) <= 2)
+      return cities.filter(c => (c.priority || 3) <= 2)
     }
     // 가까이 있을 때: 모든 핀 표시
-    return CITIES
-  }, [cameraDistance])
+    return cities
+  }, [cameraDistance, cities])
 
   useFrame(({ camera }, delta) => {
     // 자동 회전
@@ -167,6 +168,17 @@ export default function Globe({ onSelectPin }: GlobeProps) {
           onSelect={(pos) => handlePinClick(city, pos)} 
         />
       ))}
+
+      {/* 발견된 새 도시 핀 */}
+      {discoveredCity && (
+        <Pin
+          lat={discoveredCity.lat}
+          lng={discoveredCity.lng}
+          label={`🚀 ${discoveredCity.name}`}
+          occludeRef={globeRef}
+          onSelect={(pos) => handlePinClick(discoveredCity, pos)}
+        />
+      )}
     </group>
   )
 }
