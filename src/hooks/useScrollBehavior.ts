@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from "react"
-import type { DMMessage } from "@/types/message"
-
 export function useScrollBehavior(
-  messages: DMMessage[],
+  messages: any[],
   userId: string | undefined
 ) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -49,8 +47,9 @@ export function useScrollBehavior(
 
     if (!isNew) return // 초기 로딩 등 변화 없을 땐 패스
 
-    // 내 메시지면 무조건 내리기
-    if (lastMsg.sender_id === userId || lastMsg.user_id === userId) {
+    // 내 메시지면 무조건 내리기 (sender_id 또는 author_id 지원)
+    const senderId = lastMsg.sender_id || lastMsg.user_id || lastMsg.author_id
+    if (senderId === userId) {
       scrollToBottom()
       return
     }

@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import type { CityMessage } from "@/types/city-chat"
 import type { User } from "@supabase/supabase-js"
 import type { Profile } from "@/types/profile"
+
+const PAGE_SIZE = 30
 
 export function useCityChat(
   cityName: string | undefined,
@@ -12,30 +14,51 @@ export function useCityChat(
 ) {
   const [messages, setMessages] = useState<CityMessage[]>([])
   const [onlineCount, setOnlineCount] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [hasNextPage, setHasNextPage] = useState(true)
+  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false)
+  const pageRef = useRef(0)
   const bufferRef = useRef<CityMessage[]>([])
 
+  // 초기 메시지 및 이전 페이지 가져오기
+  const fetchMessages = useCallback(async (page: number) => {
+    if (!cityName) return []
+    
+    const from = page * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*, profiles(username, avatar_url, country_code)")
+      .eq("city_id", cityName.toLowerCase())
+      .order("created_at", { ascending: false })
+      .range(from, to)
+
+    if (error) {
+      console.error("Chat fetch error:", error)
+      toast.error("메시지를 불러오지 못했습니다.")
+      return []
+    }
+
+    return data || []
+  }, [cityName])
+
+  // 초기 로드
   useEffect(() => {
     if (!cityName) return
 
-    // 1. 초기 메시지 가져오기
-    const fetchInitialMessages = async () => {
-      const { data, error } = await supabase
-        .from("messages")
-        .select("*, profiles(username, avatar_url, country_code)")
-        .eq("city_id", cityName.toLowerCase())
-        .order("created_at", { ascending: false })
-        .limit(50)
-
-      if (error) {
-        console.error("Chat fetch error:", error)
-        return
-      }
-      setMessages((data || []).reverse())
+    const init = async () => {
+      setLoading(true)
+      pageRef.current = 0
+      const initialData = await fetchMessages(0)
+      setMessages([...initialData].reverse())
+      setHasNextPage(initialData.length === PAGE_SIZE)
+      setLoading(false)
     }
 
-    fetchInitialMessages()
+    init()
 
-    // 2. 리얼시간 구독 (Messages + Presence)
+    // 리얼시간 구독
     const channel = supabase.channel(`chat:${cityName.toLowerCase()}`, {
       config: {
         presence: {
@@ -71,12 +94,6 @@ export function useCityChat(
         const count = Object.keys(newState).length
         setOnlineCount(count)
       })
-      .on('presence', { event: 'join' }, () => {
-        // 새로운 접속자
-      })
-      .on('presence', { event: 'leave' }, () => {
-        // 이탈자
-      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({
@@ -85,20 +102,17 @@ export function useCityChat(
         }
       })
 
-    // 3. UI 업데이트 배칭
     const timer = setInterval(() => {
       if (bufferRef.current.length > 0) {
         setMessages((prev) => {
           const existingIds = new Set(prev.map(m => m.id))
           const uniqueNewMessages = bufferRef.current.filter(m => !existingIds.has(m.id))
-
           if (uniqueNewMessages.length === 0) {
             bufferRef.current = []
             return prev
           }
-
           const next = [...prev, ...uniqueNewMessages]
-          return next.slice(-100)
+          return next
         })
         bufferRef.current = []
       }
@@ -108,14 +122,28 @@ export function useCityChat(
       supabase.removeChannel(channel)
       clearInterval(timer)
     }
-  }, [cityName, user?.id])
+  }, [cityName, user?.id, fetchMessages])
+
+  const fetchNextPage = async () => {
+    if (!hasNextPage || isFetchingNextPage || !cityName) return
+    
+    setIsFetchingNextPage(true)
+    const nextPage = pageRef.current + 1
+    const nextData = await fetchMessages(nextPage)
+    
+    if (nextData.length > 0) {
+      setMessages(prev => [...[...nextData].reverse(), ...prev])
+      pageRef.current = nextPage
+    }
+    
+    setHasNextPage(nextData.length === PAGE_SIZE)
+    setIsFetchingNextPage(false)
+  }
 
   const handleSendMessage = async (content: string) => {
     if (!user || !content.trim() || !cityName) return
 
     const tempId = Math.random().toString(36).substring(7)
-
-    // 낙관적 업데이트
     const optimisticMessage: CityMessage = {
       id: tempId,
       content,
@@ -129,7 +157,7 @@ export function useCityChat(
       }
     }
 
-    setMessages(prev => [...prev, optimisticMessage].slice(-100))
+    setMessages(prev => [...prev, optimisticMessage])
 
     try {
       const { error } = await supabase.from("messages").insert({
@@ -137,9 +165,8 @@ export function useCityChat(
         author_id: user.id,
         city_id: cityName.toLowerCase(),
       })
-
       if (error) throw error
-    } catch (error: any) {
+    } catch {
       setMessages(prev => prev.filter(m => m.id !== tempId))
       toast.error("전송 실패")
     }
@@ -148,6 +175,10 @@ export function useCityChat(
   return {
     messages,
     onlineCount,
+    loading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
     handleSendMessage
   }
 }

@@ -20,7 +20,15 @@ export default function ChatSidebar() {
   const { unreadState, resetUnread, activeTab, setActiveTab } = useStore()
 
   // 도시 채팅 훅
-  const { messages, onlineCount, handleSendMessage } = useCityChat(
+  const { 
+    messages, 
+    onlineCount, 
+    handleSendMessage, 
+    loading, 
+    hasNextPage, 
+    isFetchingNextPage, 
+    fetchNextPage 
+  } = useCityChat(
     selectedCity?.name,
     user,
     profile
@@ -121,6 +129,10 @@ export default function ChatSidebar() {
                 onSendMessage={handleSendMessage}
                 onProfileClick={openProfile}
                 disabled={!user}
+                loading={loading}
+                hasNextPage={hasNextPage}
+                isFetchingNextPage={isFetchingNextPage}
+                onFetchNextPage={fetchNextPage}
               />
             ) : activeTab === 'friends' ? (
               <div className="flex-1 flex flex-col p-4 overflow-hidden">
