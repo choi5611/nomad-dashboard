@@ -9,15 +9,12 @@ export const GLOBE_RADIUS = 5
  * Three.js earth 텍스처와 호환되는 표준 공식
  */
 export function getPositionFromLatLon(lat: number, lng: number, radius = GLOBE_RADIUS) {
-  // 도(degree)를 라디안(radian)으로 변환
-  const phi = lat * (Math.PI / 180)
-  const theta = (lng - 180) * (Math.PI / 180)
+  const phi = (90 - lat) * (Math.PI / 180)
+  const theta = (lng + 90) * (Math.PI / 180)
 
-  // 표준 구면좌표 -> 직교좌표 변환
-  // x를 음수로 하여 텍스처 방향 맞춤
-  const x = -radius * Math.cos(phi) * Math.cos(theta)
-  const y = radius * Math.sin(phi)
-  const z = radius * Math.cos(phi) * Math.sin(theta)
+  const x = radius * Math.sin(phi) * Math.sin(theta)
+  const y = radius * Math.cos(phi)
+  const z = radius * Math.sin(phi) * Math.cos(theta)
 
   return new THREE.Vector3(x, y, z)
 }

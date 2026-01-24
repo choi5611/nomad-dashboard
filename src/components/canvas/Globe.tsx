@@ -6,7 +6,7 @@ import Pin from "./Pin"
 import { GLOBE_RADIUS } from "./math"
 import { useStore, type City } from "@/store/useStore"
 
-// 국가 코드 -> 한글 국가명 매핑 (주요 국가만 예시로)
+// 국가 코드 -> 한글 국가명 매핑
 const COUNTRY_NAMES: Record<string, string> = {
   KR: "SOUTH KOREA",
   JP: "JAPAN",
@@ -78,29 +78,22 @@ export default function Globe({ onSelectPin }: GlobeProps) {
   // 현재 줌 레벨에 따라 보여줄 핀 필터링
   const visibleCities = useMemo(() => {
     if (cameraDistance > 25) {
-      // 아주 멀리 있을 때: 국가 대표 도시(Priority 1)만 표시
       return cities.filter(c => (c.priority || 3) === 1)
     } else if (cameraDistance > 15) {
-      // 중간 거리: 주요 도시(Priority 1, 2) 표시
       return cities.filter(c => (c.priority || 3) <= 2)
     }
-    // 가까이 있을 때: 모든 핀 표시
     return cities
   }, [cameraDistance, cities])
 
-  useFrame(({ camera }, delta) => {
-    // 자동 회전
-    if (groupRef.current && isAutoRotating) {
-      groupRef.current.rotation.y += delta * 0.05
-    }
+  useFrame(({ camera }) => {
+    // 자동 회전은 이제 Scene.tsx의 CameraControls가 담당합니다.
+    // 여기서는 LOD(거리별 핀 표시)만 계산합니다.
 
-    // 카메라 거리 감지 (LOD 최적화)
-    // 매 프레임 state를 바꾸지 않고, 임계값을 넘었을 때만 업데이트하여 핀 리렌더링 최소화
     const dist = camera.position.length()
     const getRange = (d: number) => {
-      if (d > 25) return 30 // Far
-      if (d > 15) return 20 // Mid
-      return 10 // Close
+      if (d > 25) return 30 
+      if (d > 15) return 20 
+      return 10 
     }
 
     const currentRange = getRange(dist)
@@ -120,7 +113,7 @@ export default function Globe({ onSelectPin }: GlobeProps) {
 
   return (
     <group ref={groupRef}>
-      {/* 1. 지구본 본체 (텍스처 적용) - 텍스처 정렬을 위해 Y축 회전 */}
+      {/* 1. 지구본 본체 */}
       <mesh ref={globeRef}>
         <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
         <meshPhongMaterial
@@ -132,7 +125,7 @@ export default function Globe({ onSelectPin }: GlobeProps) {
         />
       </mesh>
 
-      {/* 2. 디지털 그리드/와이어프레임 오버레이 (약간 더 크게) */}
+      {/* 2. 디지털 그리드 */}
       <mesh>
         <sphereGeometry args={[GLOBE_RADIUS + 0.02, 64, 64]} />
         <meshStandardMaterial 
@@ -145,7 +138,7 @@ export default function Globe({ onSelectPin }: GlobeProps) {
         />
       </mesh>
       
-      {/* 3. 대기 효과 (Atmosphere Glow) - 선택 사항 */}
+      {/* 3. 대기 효과 */}
       <mesh>
          <sphereGeometry args={[GLOBE_RADIUS + 0.2, 64, 64]} />
          <meshBasicMaterial 
@@ -156,6 +149,14 @@ export default function Globe({ onSelectPin }: GlobeProps) {
             blending={THREE.AdditiveBlending}
          />
       </mesh>
+
+      {/* 디버그용 중심점 (정확히 아프리카 좌측 하단 기니만 부근이어야 함) */}
+      <Pin 
+        lat={0} 
+        lng={0} 
+        label="EQUATOR/MERIDIAN" 
+        onSelect={() => {}}
+      />
       
       {/* 위치 핀들 */}
       {visibleCities.map((city) => (

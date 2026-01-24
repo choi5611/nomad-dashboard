@@ -13,7 +13,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { useGeocoding } from "@/hooks/useGeocoding"
 
 export default function DashboardOverlay() {
-  // Store selectors - individually picked for stability and less re-renders
+  // Store selectors
   const selectedCity = useStore((state) => state.selectedCity)
   const setSelectedCity = useStore((state) => state.setSelectedCity)
   const dbCities = useStore((state) => state.cities)
@@ -35,6 +35,10 @@ export default function DashboardOverlay() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const { searchCity, loading: geoLoading, results: geoResults, setResults: setGeoResults } = useGeocoding()
+
+  // 사이드바 너비 계산 (오버랩 방지용)
+  const sidebarWidth = !isMobile && isSidebarOpen ? 384 : 0
+  const chatWidth = !isMobile && isChatOpen ? 400 : 0 // Chat Sidebar는 대략 400px
 
   // 방문 여부 확인
   useEffect(() => {
@@ -89,7 +93,6 @@ export default function DashboardOverlay() {
   }, [user, selectedCity, checkingIn, fetchProfile])
 
   const handleSelectCity = (city: City, isNew: boolean = false) => {
-    console.log("📍 Selecting City:", city.name, isNew ? "(Discovery)" : "(DB)")
     if (isNew) setDiscoveredCity(city)
     setSelectedCity(city)
     setSearchQuery("")
@@ -97,12 +100,15 @@ export default function DashboardOverlay() {
     setIsSearchOpen(false)
   }
 
-  // 위치 인증 가능 여부 (내 접속 국가와 도시 국가가 일치할 때)
   const canVerifyLocation = profile?.country_code === selectedCity?.countryCode
 
   return (
     <div className={`absolute inset-0 z-10 pointer-events-none p-4 md:p-6 flex flex-col justify-between ${isMobile ? 'pt-12 pb-[80px]' : ''}`}>
-      <header className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
+      {/* Top Header Section - Style margin/padding to dodge sidebars */}
+      <header 
+        className="flex flex-col md:flex-row items-center justify-between gap-4 w-full transition-all duration-300 ease-out"
+        style={{ paddingRight: !isMobile ? `${sidebarWidth}px` : '0px' }}
+      >
         {/* Left: City Info */}
         <div className="pointer-events-auto flex-1 basis-0 min-w-0 w-full md:w-auto">
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
@@ -138,7 +144,7 @@ export default function DashboardOverlay() {
           </p>
         </div>
 
-        {/* Central Search - RELATIVE is KEY! */}
+        {/* Central Search */}
         <div className="relative pointer-events-auto flex flex-col items-center w-full max-w-[280px] md:max-w-xs lg:max-w-md px-0 md:px-4 z-50">
           <div className={`relative w-full flex items-center transition-all duration-300 ${isSearchOpen ? 'bg-slate-950 shadow-[0_0_20px_rgba(0,0,0,0.5)] ring-1 ring-cyan-500/30' : 'bg-white/5 hover:bg-white/10'} rounded-2xl overflow-hidden`}>
             <div className="flex-1 flex items-center px-4 py-2.5">
@@ -167,7 +173,6 @@ export default function DashboardOverlay() {
             )}
           </div>
 
-          {/* Results Dropdown */}
           <AnimatePresence>
             {isSearchOpen && (searchQuery.length >= 2 || geoResults.length > 0) && (
               <motion.div
@@ -176,7 +181,6 @@ export default function DashboardOverlay() {
                 exit={{ opacity: 0, y: -10 }}
                 className="absolute top-full left-0 right-0 mt-2 mx-0 md:mx-4 bg-slate-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[300px] z-[60]"
               >
-                {/* 1. Local Database Match */}
                 {dbCities && dbCities.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())).length > 0 && (
                   <div className="flex flex-col">
                     {dbCities.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase())).map(city => (
@@ -194,8 +198,6 @@ export default function DashboardOverlay() {
                     ))}
                   </div>
                 )}
-
-                {/* 2. Global Discovery Button */}
                 <button
                   onClick={() => searchCity(searchQuery)}
                   disabled={geoLoading}
@@ -204,8 +206,6 @@ export default function DashboardOverlay() {
                   {geoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   전 세계 데이터베이스 검색하기
                 </button>
-
-                {/* 3. API Results */}
                 <div className="overflow-y-auto no-scrollbar">
                   {geoResults.map((res, i) => (
                     <button
@@ -227,12 +227,8 @@ export default function DashboardOverlay() {
         </div>
 
         {/* Right Section: Widgets */}
-        {!isMobile ? (
-          <motion.div 
-            animate={{ x: (isSidebarOpen ? -384 : 0) + (isChatOpen ? -400 : 0) }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="flex-1 basis-0 flex justify-end gap-3 lg:gap-4 pointer-events-auto items-center"
-          >
+        {!isMobile && (
+          <div className="flex-1 basis-0 flex justify-end gap-3 lg:gap-4 pointer-events-auto items-center">
             {selectedCity && <div className="hidden lg:block"><ClockWidget timezone={selectedCity.timezone} /></div>}
             {user ? (
               <button onClick={() => openSettings()} className="flex items-center gap-2 p-1.5 pr-3 lg:pr-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all group shrink-0">
@@ -248,20 +244,22 @@ export default function DashboardOverlay() {
               className={`p-2.5 lg:p-3 rounded-xl border transition-all shadow-lg backdrop-blur-md relative shrink-0 ${isChatOpen ? "bg-cyan-500 border-cyan-400 text-white" : "bg-white/5 border-white/10 text-white/50 hover:text-white"}`}
             >
               <MessageSquare className="w-4 h-4 lg:w-5 lg:h-5" />
-              {(unreadState.city + Object.values(unreadState.dms).reduce((a, b) => a + b, 0) + Object.values(unreadState.rooms).reduce((a, b) => a + b, 0)) > 0 && (
+              {(unreadState.city + Object.values(unreadState.dms).reduce((a: number, b: number) => a + b, 0) + Object.values(unreadState.rooms).reduce((a: number, b: number) => a + b, 0)) > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 w-4 h-4 lg:w-5 lg:h-5 bg-red-500 text-white text-[8px] lg:text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-slate-900 animate-in zoom-in duration-300">
-                  {(unreadState.city + Object.values(unreadState.dms).reduce((a, b) => a + b, 0) + Object.values(unreadState.rooms).reduce((a, b) => a + b, 0)) > 99 ? '99+' : (unreadState.city + Object.values(unreadState.dms).reduce((a, b) => a + b, 0) + Object.values(unreadState.rooms).reduce((a, b) => a + b, 0))}
+                  {(unreadState.city + Object.values(unreadState.dms).reduce((a: number, b: number) => a + b, 0) + Object.values(unreadState.rooms).reduce((a: number, b: number) => a + b, 0)) > 99 ? '99+' : (unreadState.city + Object.values(unreadState.dms).reduce((a: number, b: number) => a + b, 0) + Object.values(unreadState.rooms).reduce((a: number, b: number) => a + b, 0))}
                 </span>
               )}
             </button>
-          </motion.div>
-        ) : (
-          <div className="flex-1 basis-0" />
+          </div>
         )}
+        {isMobile && <div className="flex-1 basis-0" />}
       </header>
 
       {/* Footer */}
-      <footer className="flex gap-4 items-end pointer-events-auto">
+      <footer 
+        className="flex gap-4 items-end pointer-events-auto transition-all duration-300 ease-out"
+        style={{ paddingRight: !isMobile ? `${sidebarWidth}px` : '0px' }}
+      >
         {selectedCity && <WeatherWidget lat={selectedCity.lat} lng={selectedCity.lng} />}
         {selectedCity && <ExchangeRateWidget targetCurrency={selectedCity.currencyCode} />}
       </footer>

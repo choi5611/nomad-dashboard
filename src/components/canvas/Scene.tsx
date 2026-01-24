@@ -1,36 +1,76 @@
-import { Canvas } from "@react-three/fiber"
+import { Canvas, useFrame } from "@react-three/fiber"
 import { CameraControls, Stars } from "@react-three/drei"
 import { Suspense, useRef, useEffect } from "react"
 import Globe from "./Globe"
 import * as THREE from "three"
 import { useStore } from "@/store/useStore"
+import { getPositionFromLatLon } from "./math"
+import { useMediaQuery } from "@/hooks/useMediaQuery"
 
 function SceneContent() {
   const cameraControlsRef = useRef<CameraControls>(null)
+  const isAutoRotating = useStore((state) => state.isAutoRotating)
   const pauseRotation = useStore((state) => state.pauseRotation)
+  const isSidebarOpen = useStore((state) => state.isSidebarOpen)
+  const isChatOpen = useStore((state) => state.isChatOpen)
+  const selectedCity = useStore((state) => state.selectedCity)
+  const isMobile = useMediaQuery("(max-width: 767px)")
 
+  // 1. 자동 회전 (카메라가 지구 주위를 공전)
+  useFrame((_, delta) => {
+    if (isAutoRotating && cameraControlsRef.current) {
+      cameraControlsRef.current.azimuthAngle += 0.05 * delta
+    }
+  })
+
+  // 2. 도시 선택 시 카메라 이동 + 뷰 오프셋(사이드바 피하기)
+  useEffect(() => {
+    if (!cameraControlsRef.current) return
+
+    // 기본 카메라 위치 (지구로부터 거리 12)
+    let distance = 12
+    let targetX = 0
+    let targetY = 0
+    let targetZ = 0
+
+    if (selectedCity) {
+      const pos = getPositionFromLatLon(selectedCity.lat, selectedCity.lng)
+      const camPos = pos.clone().normalize().multiplyScalar(distance)
+      
+      // 데스크탑에서 사이드바가 열려 있으면 타겟을 왼쪽으로 살짝 밀어줌 (View Offset)
+      // 384px(사이드바 너비)은 대략 지구본 중심에서 1.5~2.0 유닛 정도 이동하는 것과 비슷함
+      if (!isMobile && (isSidebarOpen || isChatOpen)) {
+        targetX = -1.2 
+      }
+
+      cameraControlsRef.current.setLookAt(
+        camPos.x, camPos.y, camPos.z, // 카메라 위치
+        targetX, targetY, targetZ,   // 바라보는 지점 (약간 왼쪽)
+        true                         // 부드러운 전환
+      )
+
+      // 포커싱 후 잠시 멈춤
+      pauseRotation()
+    }
+  }, [selectedCity, isSidebarOpen, isChatOpen, isMobile, pauseRotation])
+
+  // 3. 사용자 조작 감지 (조작 시 자동 회전 일시정지)
   useEffect(() => {
     const controls = cameraControlsRef.current
     if (!controls) return
 
-    // 사용자가 실제로 마우스를 누르거나 터치하고 있는지 추적
     let isInteracting = false
     const onSelectStart = () => { isInteracting = true }
     const onSelectEnd = () => { isInteracting = false }
 
     const handleControlStart = () => {
-      // 카메라가 움직이기 시작했는데, 사용자가 조작 중인 게 확실할 때만 멈춤
-      if (isInteracting) {
-        pauseRotation()
-      }
+      if (isInteracting) pauseRotation()
     }
 
-    // 터치/마우스 클릭 이벤트와 제어 이벤트를 조합하여 '진짜 조작' 판별
     window.addEventListener('mousedown', onSelectStart)
     window.addEventListener('mouseup', onSelectEnd)
     window.addEventListener('touchstart', onSelectStart)
     window.addEventListener('touchend', onSelectEnd)
-    
     controls.addEventListener('controlstart', handleControlStart)
 
     return () => {
@@ -43,16 +83,9 @@ function SceneContent() {
   }, [pauseRotation])
 
   const handleSelectPin = (position: THREE.Vector3) => {
-    // 핀 위치 방향으로 카메라 이동 (지구본 중심을 바라봄)
-    // 현재 지구 반지름이 5이므로, 거리를 12 정도로 잡음
     const distance = 12
     const camPos = position.clone().normalize().multiplyScalar(distance)
-    
-    cameraControlsRef.current?.setLookAt(
-      camPos.x, camPos.y, camPos.z, // 카메라 위치
-      0, 0, 0, // 바라보는 지점 (지구 중심)
-      true // 부드러운 전환 활성화
-    )
+    cameraControlsRef.current?.setLookAt(camPos.x, camPos.y, camPos.z, 0, 0, 0, true)
   }
 
   return (
