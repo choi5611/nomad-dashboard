@@ -104,7 +104,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-white mb-2">
-            {isSignUp ? "계정 만들기" : "다시 오셨군요!"}
+            {isSignUp ? "계정 만들기" : "Hello Trabler!"}
           </h2>
           <p className="text-white/50">
             {isSignUp ? "노마드 커뮤니티의 일원이 되어보세요." : "로그인하고 경험을 공유하세요."}

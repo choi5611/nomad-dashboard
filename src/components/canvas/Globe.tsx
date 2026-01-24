@@ -92,9 +92,20 @@ export default function Globe({ onSelectPin }: GlobeProps) {
     if (groupRef.current && isAutoRotating) {
       groupRef.current.rotation.y += delta * 0.05
     }
-    // 카메라 거리 감지 (LOD를 위함)
+
+    // 카메라 거리 감지 (LOD 최적화)
+    // 매 프레임 state를 바꾸지 않고, 임계값을 넘었을 때만 업데이트하여 핀 리렌더링 최소화
     const dist = camera.position.length()
-    if (Math.abs(dist - cameraDistance) > 0.5) {
+    const getRange = (d: number) => {
+      if (d > 25) return 30 // Far
+      if (d > 15) return 20 // Mid
+      return 10 // Close
+    }
+
+    const currentRange = getRange(dist)
+    const prevRange = getRange(cameraDistance)
+
+    if (currentRange !== prevRange) {
       setCameraDistance(dist)
     }
   })

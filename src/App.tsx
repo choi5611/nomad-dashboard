@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useCallback, useState } from "react"
 import DashboardOverlay from "@/components/dashboard/DashboardOverlay"
 import Scene from "@/components/canvas/Scene"
 import CommunitySidebar from "@/components/community/CommunitySidebar"
@@ -11,7 +11,6 @@ import { useStore } from "@/store/useStore"
 import { Toaster } from "sonner"
 import { CITIES } from "@/data/cities"
 import { isOpenChatRoom } from "@/lib/constants"
-import { useState } from "react"
 
 function App() {
   const setSession = useAuth((state) => state.setSession)
@@ -19,29 +18,29 @@ function App() {
   const [hasDetectedLocation, setHasDetectedLocation] = useState(false)
   const { user } = useAuth()
 
-  // Helper functions (선언을 useEffect보다 먼저)
-  const applyLocation = (countryCode: string) => {
+  // Helper functions - useCallback으로 감싸서 메모이제이션
+  const applyLocation = useCallback((countryCode: string) => {
     const matchingCity = CITIES.find(c => c.countryCode === countryCode)
     if (matchingCity) {
-      setSelectedCity(matchingCity)
+      setSelectedCity(matchingCity, false)
     }
     setHasDetectedLocation(true)
-  }
+  }, [setSelectedCity])
 
-  const detectAndSetInitialLocation = async () => {
+  const detectAndSetInitialLocation = useCallback(async () => {
     let detectedCountry = ""
 
     try {
-      // 1. IP 기반 위치 정보 가져오기 (ipwho.is - 안정적인 무료 서비스)
+      // 1. IP 기반 위치 정보 가져오기
       const res = await fetch("https://ipwho.is/")
       const data = await res.json()
 
       if (data && data.country_code) {
         detectedCountry = data.country_code
       }
-    } catch (_error) {
+    } catch {
       console.warn("IP-based location failed, trying browser locale fallback...")
-      // 2. 백업: 브라우저 언어 설정에서 국가 코드 추출 (예: ko-KR -> KR)
+      // 2. 백업: 브라우저 언어 설정에서 국가 코드 추출
       const locale = navigator.language || (navigator as any).userLanguage
       if (locale && locale.includes("-")) {
         detectedCountry = locale.split("-")[1].toUpperCase()
@@ -52,30 +51,29 @@ function App() {
       sessionStorage.setItem("nomad_location_detected", detectedCountry)
       applyLocation(detectedCountry)
 
-      // 로그인 상태라면 DB 업데이트
+      // 로그인 상태라면 DB 업데이트 (비동기 처리)
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
-        await supabase
+        supabase
           .from("profiles")
           .update({ country_code: detectedCountry })
           .eq("id", session.user.id)
+          .then() // 결과는 기다리지 않음
       }
     } else {
-      // 모든 방법 실패 시 서울 강제 적용 (더 이상의 에러 방지)
       setHasDetectedLocation(true)
     }
-  }
+  }, [applyLocation])
 
-  // 로그인이 감지될 때 다시 한번 위치 업데이트 (세션 보장용)
-  const updateUserLocation = async (userId: string) => {
+  // 로그인이 감지될 때 다시 한번 위치 업데이트
+  const updateUserLocation = useCallback(async (userId: string) => {
     const cached = sessionStorage.getItem("nomad_location_detected")
     if (cached) {
       await supabase.from("profiles").update({ country_code: cached }).eq("id", userId)
       return
     }
-    // 캐시 없을 때만 시도
     detectAndSetInitialLocation()
-  }
+  }, [detectAndSetInitialLocation])
 
   useEffect(() => {
     // 현재 세션 가져오기
@@ -104,18 +102,21 @@ function App() {
     })
 
     return () => subscription.unsubscribe()
-  }, [setSession])
+  }, [setSession, updateUserLocation])
 
-  // 초기 접속 시 익명 상태에서도 위치 감지 & 로그인 시 프로필 업데이트
   useEffect(() => {
     const cachedLocation = sessionStorage.getItem("nomad_location_detected")
-    if (!hasDetectedLocation && !cachedLocation) {
-        detectAndSetInitialLocation()
-    } else if (cachedLocation && !hasDetectedLocation) {
-        // 캐시가 있다면 즉시 적용
-        applyLocation(cachedLocation)
+    if (!hasDetectedLocation) {
+      const timeout = setTimeout(() => {
+        if (!cachedLocation) {
+          detectAndSetInitialLocation()
+        } else {
+          applyLocation(cachedLocation)
+        }
+      }, 0)
+      return () => clearTimeout(timeout)
     }
-  }, [hasDetectedLocation])
+  }, [hasDetectedLocation, detectAndSetInitialLocation, applyLocation])
 
   // 실시간 메시지 감지를 통한 글로벌 알림 카운트
   useEffect(() => {

@@ -12,7 +12,7 @@ export interface City {
 
 interface AppState {
   selectedCity: City | null
-  setSelectedCity: (city: City) => void
+  setSelectedCity: (city: City, shouldPause?: boolean) => void
   isAutoRotating: boolean
   lastInteraction: number
   pauseRotation: () => void
@@ -55,9 +55,11 @@ const INITIAL_CITY: City = {
 
 export const useStore = create<AppState>((set, get) => ({
   selectedCity: INITIAL_CITY,
-  setSelectedCity: (city) => {
+  setSelectedCity: (city, shouldPause = true) => {
     set({ selectedCity: city, isSidebarOpen: true })
-    get().pauseRotation()
+    if (shouldPause) {
+      get().pauseRotation()
+    }
   },
   isAutoRotating: true,
   lastInteraction: 0,

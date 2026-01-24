@@ -13,10 +13,31 @@ function SceneContent() {
     const controls = cameraControlsRef.current
     if (!controls) return
 
-    const handleControlStart = () => pauseRotation()
+    // 사용자가 실제로 마우스를 누르거나 터치하고 있는지 추적
+    let isInteracting = false
+    const onSelectStart = () => { isInteracting = true }
+    const onSelectEnd = () => { isInteracting = false }
+
+    const handleControlStart = () => {
+      // 카메라가 움직이기 시작했는데, 사용자가 조작 중인 게 확실할 때만 멈춤
+      if (isInteracting) {
+        pauseRotation()
+      }
+    }
+
+    // 터치/마우스 클릭 이벤트와 제어 이벤트를 조합하여 '진짜 조작' 판별
+    window.addEventListener('mousedown', onSelectStart)
+    window.addEventListener('mouseup', onSelectEnd)
+    window.addEventListener('touchstart', onSelectStart)
+    window.addEventListener('touchend', onSelectEnd)
+    
     controls.addEventListener('controlstart', handleControlStart)
 
     return () => {
+      window.removeEventListener('mousedown', onSelectStart)
+      window.removeEventListener('mouseup', onSelectEnd)
+      window.removeEventListener('touchstart', onSelectStart)
+      window.removeEventListener('touchend', onSelectEnd)
       controls.removeEventListener('controlstart', handleControlStart)
     }
   }, [pauseRotation])
