@@ -154,7 +154,8 @@ export const useStore = create<AppState>((set, get) => ({
   registerCity: async (city) => {
     try {
       const { error } = await supabase.from('cities').insert({
-        name: city.name,
+        name: city.name.toLowerCase().replace(/\s+/g, '-'), // URL-friendly name
+        display_name: city.name, // 보여질 이름
         lat: city.lat,
         lng: city.lng,
         country_code: city.countryCode,
@@ -165,6 +166,13 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (error) throw error
       
+      // 🏆 최초 발견자 보너스 보상 (+100 XP)
+      const user = (await supabase.auth.getUser()).data.user
+      if (user) {
+        await supabase.rpc('increment_xp', { user_id: user.id, amount: 100 })
+        // useAuth.getState().fetchProfile(user.id) // UI 갱신 (이미 WritePostForm에서 함)
+      }
+
       // 상태 갱신
       await useStore.getState().fetchCities()
       set({ discoveredCity: null })

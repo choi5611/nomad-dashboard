@@ -62,18 +62,40 @@ export default function PostCard({ post, typeIcon, typeLabel, onDelete, onTagCli
   }, [post.comments_count])
 
   const handleDelete = async () => {
+    if (!user) return
+    
     try {
-      const { error } = await supabase
+      console.log(`🚀 Attempting to delete post: ${post.id} (Current User: ${user.id}, Author: ${post.author_id})`)
+      
+      // 1. 본문 삭제 (작성자 ID를 조건에 추가하여 RLS 권한을 한 번 더 보증)
+      const { error, count } = await supabase
         .from("posts")
-        .delete()
+        .delete({ count: 'exact' })
         .eq("id", post.id)
+        .eq("author_id", user.id) // 보안 강화: 내 글이 아니면 아예 요청도 안 먹히게
 
       if (error) throw error
+      
+      if (count === 0) {
+        console.warn("⚠️ No rows deleted. Potential reasons: Already deleted or permission denied.")
+        throw new Error("삭제할 수 없는 게시글이거나 권한이 없습니다.")
+      }
+
+      console.log("✅ Database confirmed deletion.")
+      
+      // 3. XP 환수 (-10 XP) - 어뷰징 방지
+      await supabase.rpc('increment_xp', { user_id: user.id, amount: -10 })
+      useAuth.getState().fetchProfile(user.id)
 
       toast.success("게시글이 삭제되었습니다.")
-      if (onDelete) onDelete()
-    } catch (error) {
-      toast.error("삭제 중 오류가 발생했습니다.")
+      
+      // 4. UI 즉시 갱신
+      setTimeout(() => {
+        if (onDelete) onDelete()
+      }, 300)
+    } catch (error: any) {
+      console.error("❌ Deletion failed:", error)
+      toast.error(error.message || "삭제 중 오류가 발생했습니다.")
     }
   }
 

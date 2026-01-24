@@ -6,6 +6,7 @@ import { useInView } from "react-intersection-observer"
 import { useInfinitePosts } from "@/hooks/useInfinitePosts"
 import PostCard from "./PostCard"
 import WritePostForm from "./WritePostForm"
+import { useQueryClient } from "@tanstack/react-query"
 
 const typeIcons = {
   experience: Building2,
@@ -39,6 +40,7 @@ export default function CommunitySidebar() {
   const [searchQuery, setSearchQuery] = useState("")
   const { isChatOpen, toggleChat } = useStore()
   const isMobile = useMediaQuery("(max-width: 767px)")
+  const queryClient = useQueryClient()
   
   const { ref, inView } = useInView()
   
@@ -47,8 +49,7 @@ export default function CommunitySidebar() {
     fetchNextPage, 
     hasNextPage, 
     isFetchingNextPage, 
-    status,
-    refetch 
+    status 
   } = useInfinitePosts({ 
     category: activeTab, 
     cityId: selectedCity?.name?.toLowerCase(),
@@ -193,7 +194,12 @@ export default function CommunitySidebar() {
                   post={post} 
                   typeIcon={TypeIcon} 
                   typeLabel={typeLabel} 
-                  onDelete={() => refetch()}
+                  onDelete={async () => {
+                    console.log("♻️ Post deleted, resetting all post queries for fresh data...")
+                    await queryClient.resetQueries({ queryKey: ["posts"] })
+                    // 만약 가상 뷰 싱크가 느릴 경우를 대비해 1초 뒤 한 번 더 무효화
+                    setTimeout(() => queryClient.invalidateQueries({ queryKey: ["posts"] }), 1000)
+                  }}
                   onTagClick={(tag) => setSelectedTag(tag)}
                 />
               )
@@ -212,7 +218,7 @@ export default function CommunitySidebar() {
       {isWriting && (
         <WritePostForm
           onClose={() => setIsWriting(false)}
-          onPostCreate={() => refetch()}
+          onPostCreate={() => queryClient.invalidateQueries({ queryKey: ["posts"] })}
           tabs={TABS} 
         />
       )}

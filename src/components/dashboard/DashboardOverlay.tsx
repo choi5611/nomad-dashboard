@@ -26,7 +26,7 @@ export default function DashboardOverlay() {
   const isSidebarOpen = useStore((state) => state.isSidebarOpen)
   const unreadState = useStore((state) => state.unreadState)
 
-  const { user, profile, fetchProfile, loading: authLoading } = useAuth()
+  const { user, profile, fetchProfile } = useAuth()
   const [hasVisited, setHasVisited] = useState(false)
   const [checkingIn, setCheckingIn] = useState(false)
   const isMobile = useMediaQuery("(max-width: 767px)")
@@ -38,7 +38,6 @@ export default function DashboardOverlay() {
 
   // 사이드바 너비 계산 (오버랩 방지용)
   const sidebarWidth = !isMobile && isSidebarOpen ? 384 : 0
-  const chatWidth = !isMobile && isChatOpen ? 400 : 0 // Chat Sidebar는 대략 400px
 
   // 방문 여부 확인
   useEffect(() => {
