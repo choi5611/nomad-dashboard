@@ -9,10 +9,12 @@ import ProfileImageSection from "./ProfileImageSection"
 import AvatarCropModal from "./AvatarCropModal"
 import ProfileEditForm from "./ProfileEditForm"
 import MyActivityList from "@/components/community/MyActivityList"
+import { useMediaQuery } from "@/hooks/useMediaQuery"
 
 export default function SettingsSidebar() {
   const { isSettingsOpen, closeSettings } = useStore()
   const { profile, fetchProfile, user, signOut, loading: authLoading } = useAuth()
+  const isMobile = useMediaQuery("(max-width: 767px)")
 
   // 프로필 업데이트 훅
   const { username, setUsername, loading, handleUpdateProfile } = useProfileUpdate(
@@ -71,7 +73,7 @@ export default function SettingsSidebar() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 h-screen w-full md:max-w-sm bg-slate-900 border-l border-white/10 z-[90] flex flex-col shadow-2xl"
+            className={`fixed right-0 top-0 h-screen w-full md:max-w-sm bg-slate-900 border-l border-white/10 z-[90] flex flex-col shadow-2xl ${isMobile ? 'pb-[80px]' : ''}`}
           >
             {/* Header */}
             <div className="p-6 border-b border-white/10 flex items-center justify-between bg-slate-900/50 backdrop-blur-md sticky top-0 z-10">

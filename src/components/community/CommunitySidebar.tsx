@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Plus, Loader2, MessageSquare, Search } from "lucide-react"
+import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { useStore } from "@/store/useStore"
 import { useInView } from "react-intersection-observer"
 import { useInfinitePosts } from "@/hooks/useInfinitePosts"
@@ -37,6 +38,7 @@ export default function CommunitySidebar() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const { isChatOpen, toggleChat } = useStore()
+  const isMobile = useMediaQuery("(max-width: 767px)")
   
   const { ref, inView } = useInView()
   
@@ -66,7 +68,7 @@ export default function CommunitySidebar() {
     <div
       className={`fixed top-0 right-0 h-full w-full md:w-96 bg-slate-900/95 backdrop-blur-xl border-l border-white/10 z-50 transform transition-transform duration-300 ease-out ${
         isSidebarOpen ? "translate-x-0" : "translate-x-full"
-      }`}
+      } ${isMobile ? 'pb-[80px]' : ''}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/10">
