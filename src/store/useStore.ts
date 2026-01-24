@@ -39,6 +39,8 @@ interface AppState {
   resetUnread: (type: 'city' | 'dm' | 'room', id?: string) => void
   activeTab: 'city' | 'friends' | 'open'
   setActiveTab: (tab: 'city' | 'friends' | 'open') => void
+  // 모바일 전용 뷰 관리
+  setActiveView: (view: 'globe' | 'community' | 'chat' | 'settings') => void
 }
 
 const AUTO_ROTATE_DELAY = 5000 // 5초 후 다시 회전
@@ -115,4 +117,9 @@ export const useStore = create<AppState>((set, get) => ({
   }),
   activeTab: 'city',
   setActiveTab: (tab) => set({ activeTab: tab }),
+  setActiveView: (view) => set({
+    isSidebarOpen: view === 'community',
+    isChatOpen: view === 'chat',
+    isSettingsOpen: view === 'settings',
+  }),
 }))

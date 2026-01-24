@@ -50,7 +50,7 @@ export function useCommentSubmit(postId: string, postAuthorId: string) {
       toast.success("댓글이 등록되었습니다.")
 
       if (onSuccess) onSuccess()
-    } catch (error) {
+    } catch {
       toast.error("댓글 등록 중 오류가 발생했습니다.")
     } finally {
       setSubmitting(false)

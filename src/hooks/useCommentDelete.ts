@@ -21,7 +21,7 @@ export function useCommentDelete(postId: string) {
 
       queryClient.invalidateQueries({ queryKey: ["comments", postId] })
       toast.success("댓글이 삭제되었습니다.")
-    } catch (error) {
+    } catch {
       toast.error("삭제 실패")
     } finally {
       setDeletingCommentId(null)

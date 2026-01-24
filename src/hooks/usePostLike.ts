@@ -71,7 +71,7 @@ export function usePostLike(postId: string, postAuthorId: string, user: User | n
           })
         }
       }
-    } catch (error) {
+    } catch {
       // Revert on error
       setIsLiked(prevIsLiked)
       setLikeCount(prevCount)

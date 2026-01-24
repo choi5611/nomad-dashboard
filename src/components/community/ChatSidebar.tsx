@@ -11,6 +11,7 @@ import DirectMessageView from "./DirectMessageView"
 import ChatTabSwitcher from "./ChatTabSwitcher"
 import CityChat from "./CityChat"
 import OpenChatRoomList from "./OpenChatRoomList"
+import { useMediaQuery } from "@/hooks/useMediaQuery"
 
 export default function ChatSidebar() {
   const { isChatOpen, closeChat, selectedCity, isSidebarOpen, activeChat, setActiveChat } = useStore()
@@ -18,6 +19,7 @@ export default function ChatSidebar() {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const { unreadState, resetUnread, activeTab, setActiveTab } = useStore()
+  const isMobile = useMediaQuery("(max-width: 768px)")
 
   // 도시 채팅 훅
   const { 
@@ -77,7 +79,7 @@ export default function ChatSidebar() {
           animate={{
             x: 0,
             opacity: 1,
-            right: isSidebarOpen ? 384 : 0
+            right: (isSidebarOpen && !isMobile) ? 384 : 0
           }}
           exit={{ x: 400, opacity: 0 }}
           transition={{
@@ -86,7 +88,7 @@ export default function ChatSidebar() {
             stiffness: 200,
             right: { duration: 0.3 }
           }}
-          className="fixed top-0 h-full w-[400px] bg-slate-900/90 backdrop-blur-3xl border-l border-white/10 z-[49] flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.5)]"
+          className={`fixed top-0 h-full w-full md:w-[400px] bg-slate-900/90 backdrop-blur-3xl border-l border-white/10 z-[49] flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.5)] ${isMobile ? 'pb-[72px]' : ''}`}
         >
           {/* Header */}
           <div className="p-4 border-b border-cyan-500/20 bg-cyan-500/5">

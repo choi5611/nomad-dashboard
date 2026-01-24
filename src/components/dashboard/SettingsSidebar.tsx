@@ -40,7 +40,7 @@ export default function SettingsSidebar() {
       await signOut()
       toast.success("로그아웃되었습니다.")
       closeSettings()
-    } catch (error) {
+    } catch {
       toast.error("로그아웃 실패")
     }
   }
@@ -71,7 +71,7 @@ export default function SettingsSidebar() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 h-screen w-full max-w-sm bg-slate-900 border-l border-white/10 z-[90] flex flex-col shadow-2xl"
+            className="fixed right-0 top-0 h-screen w-full md:max-w-sm bg-slate-900 border-l border-white/10 z-[90] flex flex-col shadow-2xl"
           >
             {/* Header */}
             <div className="p-6 border-b border-white/10 flex items-center justify-between bg-slate-900/50 backdrop-blur-md sticky top-0 z-10">
@@ -91,10 +91,29 @@ export default function SettingsSidebar() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
-              {/* Loading State */}
-              {authLoading || (user && !profile) ? (
+              {/* Profile Sections - Only for Logged In Users */}
+              {authLoading ? (
                 <div className="flex-1 flex items-center justify-center min-h-[200px]">
                   <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
+                </div>
+              ) : !user ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center space-y-6">
+                  <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                    <User className="w-10 h-10 text-white/20" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-white font-bold text-lg">로그인이 필요합니다</p>
+                    <p className="text-white/40 text-sm">노마드 활동을 기록하고<br />메달을 수집하려면 로그인하세요.</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      closeSettings()
+                      useStore.getState().openLoginModal()
+                    }}
+                    className="w-full py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold rounded-xl transition-all shadow-lg shadow-cyan-500/20"
+                  >
+                    지금 로그인하기
+                  </button>
                 </div>
               ) : (
                 <>
