@@ -1,5 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
+import { sanitizeSearchQuery, sanitizeHashtag } from "@/utils/sanitize"
 
 interface UseInfinitePostsProps {
   category: string
@@ -39,7 +40,8 @@ export function useInfinitePosts({
       }
 
       if (hashtag) {
-        query = query.ilike("search_blob", `%#${hashtag}%`)
+        const sanitizedHashtag = sanitizeHashtag(hashtag)
+        query = query.ilike("search_blob", `%#${sanitizedHashtag}%`)
       }
 
       if (authorId) {
@@ -58,7 +60,8 @@ export function useInfinitePosts({
       }
 
       if (searchQuery) {
-        const terms = searchQuery.trim().split(/\s+/)
+        const sanitizedQuery = sanitizeSearchQuery(searchQuery)
+        const terms = sanitizedQuery.trim().split(/\s+/)
         terms.forEach(term => {
           if (term) {
             // 게시글 본문 + 모든 댓글 + 작성자명이 합쳐진 'search_blob'에서 검색!

@@ -10,12 +10,72 @@ import { useAuth } from "@/store/useAuth"
 import { useStore } from "@/store/useStore"
 import { Toaster } from "sonner"
 import { CITIES } from "@/data/cities"
+import { isOpenChatRoom } from "@/lib/constants"
 import { useState } from "react"
 
 function App() {
   const setSession = useAuth((state) => state.setSession)
   const setSelectedCity = useStore((state) => state.setSelectedCity)
   const [hasDetectedLocation, setHasDetectedLocation] = useState(false)
+  const { user } = useAuth()
+
+  // Helper functions (선언을 useEffect보다 먼저)
+  const applyLocation = (countryCode: string) => {
+    const matchingCity = CITIES.find(c => c.countryCode === countryCode)
+    if (matchingCity) {
+      setSelectedCity(matchingCity)
+    }
+    setHasDetectedLocation(true)
+  }
+
+  const detectAndSetInitialLocation = async () => {
+    let detectedCountry = ""
+
+    try {
+      // 1. IP 기반 위치 정보 가져오기 (ipwho.is - 안정적인 무료 서비스)
+      const res = await fetch("https://ipwho.is/")
+      const data = await res.json()
+
+      if (data && data.country_code) {
+        detectedCountry = data.country_code
+      }
+    } catch (_error) {
+      console.warn("IP-based location failed, trying browser locale fallback...")
+      // 2. 백업: 브라우저 언어 설정에서 국가 코드 추출 (예: ko-KR -> KR)
+      const locale = navigator.language || (navigator as any).userLanguage
+      if (locale && locale.includes("-")) {
+        detectedCountry = locale.split("-")[1].toUpperCase()
+      }
+    }
+
+    if (detectedCountry) {
+      sessionStorage.setItem("nomad_location_detected", detectedCountry)
+      applyLocation(detectedCountry)
+
+      // 로그인 상태라면 DB 업데이트
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        await supabase
+          .from("profiles")
+          .update({ country_code: detectedCountry })
+          .eq("id", session.user.id)
+      }
+    } else {
+      // 모든 방법 실패 시 서울 강제 적용 (더 이상의 에러 방지)
+      setHasDetectedLocation(true)
+    }
+  }
+
+  // 로그인이 감지될 때 다시 한번 위치 업데이트 (세션 보장용)
+  const updateUserLocation = async (userId: string) => {
+    const cached = sessionStorage.getItem("nomad_location_detected")
+    if (cached) {
+      await supabase.from("profiles").update({ country_code: cached }).eq("id", userId)
+      return
+    }
+    // 캐시 없을 때만 시도
+    detectAndSetInitialLocation()
+  }
 
   useEffect(() => {
     // 현재 세션 가져오기
@@ -57,65 +117,6 @@ function App() {
     }
   }, [hasDetectedLocation])
 
-  const applyLocation = (countryCode: string) => {
-    const matchingCity = CITIES.find(c => c.countryCode === countryCode)
-    if (matchingCity) {
-      setSelectedCity(matchingCity)
-    }
-    setHasDetectedLocation(true)
-  }
-
-  const detectAndSetInitialLocation = async () => {
-    let detectedCountry = ""
-
-    try {
-      // 1. IP 기반 위치 정보 가져오기 (ipwho.is - 안정적인 무료 서비스)
-      const res = await fetch("https://ipwho.is/")
-      const data = await res.json()
-      
-      if (data && data.country_code) {
-        detectedCountry = data.country_code
-      }
-    } catch (error) {
-      console.warn("IP-based location failed, trying browser locale fallback...")
-      // 2. 백업: 브라우저 언어 설정에서 국가 코드 추출 (예: ko-KR -> KR)
-      const locale = navigator.language || (navigator as any).userLanguage
-      if (locale && locale.includes("-")) {
-        detectedCountry = locale.split("-")[1].toUpperCase()
-      }
-    }
-
-    if (detectedCountry) {
-      sessionStorage.setItem("nomad_location_detected", detectedCountry)
-      applyLocation(detectedCountry)
-
-      // 로그인 상태라면 DB 업데이트
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        await supabase
-          .from("profiles")
-          .update({ country_code: detectedCountry })
-          .eq("id", session.user.id)
-      }
-    } else {
-      // 모든 방법 실패 시 서울 강제 적용 (더 이상의 에러 방지)
-      setHasDetectedLocation(true)
-    }
-  }
-
-  // 로그인이 감지될 때 다시 한번 위치 업데이트 (세션 보장용)
-  const updateUserLocation = async (userId: string) => {
-    const cached = sessionStorage.getItem("nomad_location_detected")
-    if (cached) {
-        await supabase.from("profiles").update({ country_code: cached }).eq("id", userId)
-        return
-    }
-    // 캐시 없을 때만 시도
-    detectAndSetInitialLocation()
-  }
-
-  const { user } = useAuth()
-
   // 실시간 메시지 감지를 통한 글로벌 알림 카운트
   useEffect(() => {
     if (!user) return
@@ -155,10 +156,10 @@ function App() {
           } 
           // 룸(그룹/오픈)인 경우
           else if (payload.new.room_id) {
-            const isOpenChat = ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(payload.new.room_id)
+            const isOpenChat = isOpenChatRoom(payload.new.room_id)
             const targetTab = isOpenChat ? 'open' : 'friends'
             const isVisible = isChatOpen && activeTab === targetTab && activeChat?.id === payload.new.room_id
-            
+
             if (!isVisible) incrementUnread('room', payload.new.room_id)
           }
         }

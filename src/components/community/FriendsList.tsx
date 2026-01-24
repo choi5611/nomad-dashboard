@@ -113,31 +113,35 @@ export default function FriendsList() {
   }
 
   useEffect(() => {
-    if (user) {
-      fetchFriends(true)
-      fetchChatRooms()
-      
-      const friendsChannel = supabase
-        .channel('friendships_changes')
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'friendships'
-        }, () => {
-          fetchFriends(false) 
-        })
-        .subscribe()
-        
-      const roomChannel = supabase
-        .channel('room_changes')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'room_members', filter: `user_id=eq.${user.id}` }, () => fetchChatRooms())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, () => fetchChatRooms())
-        .subscribe()
+    if (!user) {
+      // 비회원일 때는 로딩 종료
+      setLoading(false)
+      return
+    }
 
-      return () => {
-        supabase.removeChannel(friendsChannel)
-        supabase.removeChannel(roomChannel)
-      }
+    fetchFriends(true)
+    fetchChatRooms()
+
+    const friendsChannel = supabase
+      .channel('friendships_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'friendships'
+      }, () => {
+        fetchFriends(false)
+      })
+      .subscribe()
+
+    const roomChannel = supabase
+      .channel('room_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_members', filter: `user_id=eq.${user.id}` }, () => fetchChatRooms())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, () => fetchChatRooms())
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(friendsChannel)
+      supabase.removeChannel(roomChannel)
     }
   }, [user])
 
@@ -283,6 +287,19 @@ export default function FriendsList() {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />
+      </div>
+    )
+  }
+
+  // 비회원일 때 안내 메시지
+  if (!user) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
+        <Users className="w-12 h-12 text-white/20" />
+        <div>
+          <h3 className="text-sm font-semibold text-white mb-2">로그인이 필요합니다</h3>
+          <p className="text-xs text-white/40">친구 기능을 사용하려면 로그인해주세요</p>
+        </div>
       </div>
     )
   }

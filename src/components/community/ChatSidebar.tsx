@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Send, Activity, Sparkles } from "lucide-react"
 import { useStore } from "@/store/useStore"
@@ -9,6 +9,7 @@ import UserProfileModal from "./UserProfileModal"
 import { Users, MapPin } from "lucide-react"
 import FriendsList from "./FriendsList"
 import DirectMessageView from "./DirectMessageView"
+import { OPEN_CHAT_ROOMS, isOpenChatRoom } from "@/lib/constants"
 
 interface Message {
   id: string;
@@ -41,9 +42,26 @@ export default function ChatSidebar() {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const { unreadState, resetUnread, activeTab, setActiveTab } = useStore()
-  
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const bufferRef = useRef<Message[]>([])
+
+  // 읽지 않은 메시지 계산 (메모이제이션)
+  const unreadCounts = useMemo(() => {
+    const dmCount = Object.values(unreadState.dms).reduce((a, b) => a + b, 0)
+    const groupRoomCount = Object.entries(unreadState.rooms)
+      .filter(([id]) => !isOpenChatRoom(id))
+      .reduce((a, b) => a + b[1], 0)
+    const openRoomCount = Object.entries(unreadState.rooms)
+      .filter(([id]) => isOpenChatRoom(id))
+      .reduce((a, b) => a + b[1], 0)
+
+    return {
+      dm: dmCount,
+      friends: dmCount + groupRoomCount,
+      open: openRoomCount,
+    }
+  }, [unreadState])
 
   // 초기 메시지 로드 및 구독 (Presence 포함)
   useEffect(() => {
@@ -255,16 +273,16 @@ export default function ChatSidebar() {
                         setActiveChat(null)
                     }}
                     className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold transition-all relative ${
-                        activeTab === 'friends' 
-                        ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" 
+                        activeTab === 'friends'
+                        ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
                         : "text-white/40 hover:bg-white/5"
                     }`}
                 >
                     <Users className="w-3.5 h-3.5" />
                     FRIENDS
-                    {activeTab !== 'friends' && (Object.values(unreadState.dms).reduce((a,b)=>a+b,0) + Object.entries(unreadState.rooms).filter(([id]) => !['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(id)).reduce((a,b)=>a+b[1],0)) > 0 && (
+                    {activeTab !== 'friends' && unreadCounts.friends > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] flex items-center justify-center rounded-full border border-slate-900">
-                            {(Object.values(unreadState.dms).reduce((a,b)=>a+b,0) + Object.entries(unreadState.rooms).filter(([id]) => !['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(id)).reduce((a,b)=>a+b[1],0)) > 99 ? '99+' : (Object.values(unreadState.dms).reduce((a,b)=>a+b,0) + Object.entries(unreadState.rooms).filter(([id]) => !['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(id)).reduce((a,b)=>a+b[1],0))}
+                            {unreadCounts.friends > 99 ? '99+' : unreadCounts.friends}
                         </span>
                     )}
                 </button>
@@ -274,16 +292,16 @@ export default function ChatSidebar() {
                         setActiveChat(null)
                     }}
                     className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-bold transition-all relative ${
-                        activeTab === 'open' 
-                        ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20" 
+                        activeTab === 'open'
+                        ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20"
                         : "text-white/40 hover:bg-white/5"
                     }`}
                 >
                     <Sparkles className="w-3.5 h-3.5" />
                     OPEN
-                    {activeTab !== 'open' && Object.entries(unreadState.rooms).filter(([id]) => ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(id)).reduce((a,b)=>a+b[1],0) > 0 && (
+                    {activeTab !== 'open' && unreadCounts.open > 0 && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[8px] flex items-center justify-center rounded-full border border-slate-900">
-                            {Object.entries(unreadState.rooms).filter(([id]) => ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(id)).reduce((a,b)=>a+b[1],0) > 99 ? '99+' : Object.entries(unreadState.rooms).filter(([id]) => ['550e8400-e29b-41d4-a716-446655440000', '550e8400-e29b-41d4-a716-446655440001'].includes(id)).reduce((a,b)=>a+b[1],0)}
+                            {unreadCounts.open > 99 ? '99+' : unreadCounts.open}
                         </span>
                     )}
                 </button>
@@ -352,22 +370,22 @@ export default function ChatSidebar() {
                         <Sparkles className="w-3 h-3" /> Anonymous Lounges
                     </h3>
                     <div className="space-y-3">
-                        <OpenChatRoomItem 
-                            name="Global Nomad Lounge" 
+                        <OpenChatRoomItem
+                            name="Global Nomad Lounge"
                             participants={128}
-                            unreadCount={unreadState.rooms['550e8400-e29b-41d4-a716-446655440000']}
+                            unreadCount={unreadState.rooms[OPEN_CHAT_ROOMS.GENERAL]}
                             onClick={() => {
-                                setActiveChat({ type: 'open', id: '550e8400-e29b-41d4-a716-446655440000', name: 'Global Nomad Lounge' })
-                                resetUnread('room', '550e8400-e29b-41d4-a716-446655440000')
+                                setActiveChat({ type: 'open', id: OPEN_CHAT_ROOMS.GENERAL, name: 'Global Nomad Lounge' })
+                                resetUnread('room', OPEN_CHAT_ROOMS.GENERAL)
                             }}
                         />
-                        <OpenChatRoomItem 
-                            name="Digital Nomad Tips" 
+                        <OpenChatRoomItem
+                            name="Digital Nomad Tips"
                             participants={56}
-                            unreadCount={unreadState.rooms['550e8400-e29b-41d4-a716-446655440001']}
+                            unreadCount={unreadState.rooms[OPEN_CHAT_ROOMS.LOUNGE]}
                             onClick={() => {
-                                setActiveChat({ type: 'open', id: '550e8400-e29b-41d4-a716-446655440001', name: 'Digital Nomad Tips' })
-                                resetUnread('room', '550e8400-e29b-41d4-a716-446655440001')
+                                setActiveChat({ type: 'open', id: OPEN_CHAT_ROOMS.LOUNGE, name: 'Digital Nomad Tips' })
+                                resetUnread('room', OPEN_CHAT_ROOMS.LOUNGE)
                             }}
                         />
                     </div>

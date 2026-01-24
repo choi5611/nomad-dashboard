@@ -3,7 +3,12 @@ import { X, Github, Mail } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 
-const getErrorMessage = (error: any) => {
+interface AuthError {
+  message?: string
+  status?: number
+}
+
+const getErrorMessage = (error: AuthError) => {
   const message = error.message || ""
   const status = error.status
 

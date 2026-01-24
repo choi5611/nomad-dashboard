@@ -15,7 +15,7 @@ export default function DashboardOverlay() {
   const openLoginModal = useStore((state) => state.openLoginModal)
   const openSettings = useStore((state) => state.openSettings)
   const { isChatOpen, toggleChat, isSidebarOpen, unreadState } = useStore()
-  const { user, profile, fetchProfile } = useAuth()
+  const { user, profile, fetchProfile, loading: authLoading } = useAuth()
   const [hasVisited, setHasVisited] = useState(false)
   const [checkingIn, setCheckingIn] = useState(false)
 
@@ -126,21 +126,25 @@ export default function DashboardOverlay() {
           
           {/* Auth Button */}
           {user ? (
-            <button 
+            <button
               onClick={() => openSettings()}
               className="flex items-center gap-2 p-1.5 pr-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all group pointer-events-auto"
             >
-              <img 
-                src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`} 
+              <img
+                src={profile?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`}
                 alt="Profile"
                 className="w-8 h-8 rounded-full border border-cyan-500/30"
               />
-              <span className="text-sm font-medium text-white/70 group-hover:text-white">
-                {profile?.username || user.email?.split('@')[0]}
-              </span>
+              {authLoading || !profile ? (
+                <div className="h-5 w-20 bg-white/10 rounded animate-pulse" />
+              ) : (
+                <span className="text-sm font-medium text-white/70 group-hover:text-white">
+                  {profile.username}
+                </span>
+              )}
             </button>
           ) : (
-            <button 
+            <button
               onClick={openLoginModal}
               className="px-4 py-2 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/30 rounded-xl text-cyan-400 text-sm font-bold transition-all backdrop-blur-md"
             >

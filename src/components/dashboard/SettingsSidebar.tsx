@@ -18,7 +18,7 @@ import { Award } from "lucide-react"
 
 export default function SettingsSidebar() {
   const { isSettingsOpen, closeSettings } = useStore()
-  const { profile, fetchProfile, user, signOut } = useAuth()
+  const { profile, fetchProfile, user, signOut, loading: authLoading } = useAuth()
   const queryClient = useQueryClient()
   
   const [username, setUsername] = useState("")
@@ -205,6 +205,13 @@ export default function SettingsSidebar() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
+              {/* Loading State */}
+              {authLoading || (user && !profile) ? (
+                <div className="flex-1 flex items-center justify-center min-h-[200px]">
+                  <Loader2 className="w-8 h-8 animate-spin text-cyan-500" />
+                </div>
+              ) : (
+                <>
               {/* Profile Image Preview */}
               <div className="flex flex-col items-center">
                 <div className="relative group">
@@ -387,6 +394,8 @@ export default function SettingsSidebar() {
                 </div>
                 <MyActivityList />
               </div>
+              </>
+              )}
             </div>
 
             {/* FooterInfo */}
