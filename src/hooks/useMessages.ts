@@ -2,6 +2,8 @@ import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useStore } from "@/store/useStore"
+import { useQueryClient } from "@tanstack/react-query"
+import { useInfiniteMessages } from "./useInfiniteMessages"
 import type { DMMessage, ChatInfo } from "@/types/message"
 import type { User } from "@supabase/supabase-js"
 import type { Profile } from "@/types/profile"
@@ -12,60 +14,27 @@ export function useMessages(
   profile: Profile | null,
   scrollToBottom: () => void
 ) {
-  const [messages, setMessages] = useState<DMMessage[]>([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
+  const [realtimeMessages, setRealtimeMessages] = useState<DMMessage[]>([])
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading
+  } = useInfiniteMessages(chat, user?.id)
+
+  // 모든 메시지를 합치기 (페이지 순서 역순 + 각 페이지 내 메시지 역순 = 오래된→최신)
+  const loadedMessages = [...(data?.pages || [])].reverse()
+    .flatMap(page => [...page.messages].reverse())
+  const messages = [...loadedMessages, ...realtimeMessages]
 
   useEffect(() => {
     if (!user) return
 
-    const fetchMessages = async () => {
-      setLoading(true)
-      try {
-        let data, error
-
-        if (chat.type === 'dm') {
-          const result = await supabase
-            .from('direct_messages')
-            .select('*, sender:profiles!sender_id(username, avatar_url, country_code)')
-            .or(`and(sender_id.eq.${user.id},receiver_id.eq.${chat.id}),and(sender_id.eq.${chat.id},receiver_id.eq.${user.id})`)
-            .order('created_at', { ascending: true })
-
-          if (result.error) {
-            console.error('❌ DM Fetch Error:', result.error)
-            throw result.error
-          }
-          data = result.data
-          error = result.error
-        } else if (chat.type === 'group') {
-          const result = await supabase
-            .from('group_messages')
-            .select('*, sender:profiles(username, avatar_url)')
-            .eq('room_id', chat.id)
-            .order('created_at', { ascending: true })
-          data = result.data
-          error = result.error
-        } else {
-          // 오픈 채팅
-          const result = await supabase
-            .from('direct_messages')
-            .select('*')
-            .eq('room_id', chat.id)
-            .order('created_at', { ascending: true })
-          data = result.data
-          error = result.error
-        }
-
-        if (error) throw error
-        setMessages(data || [])
-      } catch (err) {
-        console.error(err)
-        toast.error("메시지를 불러오지 못했습니다.")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchMessages()
+    // 페이지 변경 시 실시간 메시지 초기화
+    setRealtimeMessages([])
 
     // 입장 시 unread 리셋
     const { resetUnread } = useStore.getState()
@@ -87,12 +56,20 @@ export function useMessages(
       }, async (payload) => {
         const newMessage = payload.new as any
 
-        // 그룹 메시지의 경우 sender 정보 가져오기
+        // sender 정보 가져오기 (DM, Group 모두)
         if (chat.type === 'group' && !newMessage.sender) {
           const { data } = await supabase
             .from('profiles')
             .select('username, avatar_url')
             .eq('id', newMessage.sender_id || newMessage.user_id)
+            .single()
+          if (data) newMessage.sender = data
+        } else if (chat.type === 'dm' && !newMessage.sender) {
+          // DM의 경우에도 sender 정보 가져오기
+          const { data } = await supabase
+            .from('profiles')
+            .select('username, avatar_url, country_code')
+            .eq('id', newMessage.sender_id)
             .single()
           if (data) newMessage.sender = data
         }
@@ -103,7 +80,7 @@ export function useMessages(
         // 본인이 보낸 메시지는 낙관적 업데이트 처리
         const senderId = newMessage.sender_id || newMessage.user_id
         if (senderId === user.id) {
-          setMessages(prev => {
+          setRealtimeMessages(prev => {
             const tempMsgIndex = prev.findIndex(m =>
               m.sender_id === user.id &&
               m.content === newMessage.content &&
@@ -121,7 +98,7 @@ export function useMessages(
 
         // 다른 사람 메시지 추가
         useStore.getState().resetUnread(chat.type === 'dm' ? 'dm' : 'room', chat.id)
-        setMessages(prev => {
+        setRealtimeMessages(prev => {
           if (prev.some(m => m.id === newMessage.id)) return prev
           return [...prev, newMessage]
         })
@@ -150,7 +127,7 @@ export function useMessages(
       ...(chat.type === 'dm' ? { receiver_id: chat.id } : { room_id: chat.id })
     }
 
-    setMessages(prev => [...prev, optimisticMsg])
+    setRealtimeMessages(prev => [...prev, optimisticMsg])
 
     // 메시지 전송 직후 스크롤 강제 이동
     setTimeout(scrollToBottom, 10)
@@ -183,7 +160,7 @@ export function useMessages(
       }
     } catch (err: any) {
       console.error('❌ Message Send Failed:', err)
-      setMessages(prev => prev.filter(m => m.id !== tempId))
+      setRealtimeMessages(prev => prev.filter(m => m.id !== tempId))
       toast.error(`전송 실패: ${err.message}`)
     }
   }
@@ -247,7 +224,10 @@ export function useMessages(
 
   return {
     messages,
-    loading,
+    loading: isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
     handleSendMessage,
     handleLeaveChat
   }

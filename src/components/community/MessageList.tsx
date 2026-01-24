@@ -13,6 +13,8 @@ interface MessageListProps {
   onScroll: () => void
   onScrollToBottom: () => void
   onDismissAlert: () => void
+  sentinelRef: (node?: Element | null) => void
+  isFetchingNextPage: boolean
 }
 
 export default function MessageList({
@@ -24,14 +26,16 @@ export default function MessageList({
   showNewMessageAlert,
   onScroll,
   onScrollToBottom,
-  onDismissAlert
+  onDismissAlert,
+  sentinelRef,
+  isFetchingNextPage
 }: MessageListProps) {
   return (
     <>
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar scroll-smooth relative"
+        className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar relative"
       >
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-white/20">
@@ -39,19 +43,31 @@ export default function MessageList({
             <p className="text-[10px] font-mono">SYNCHRONIZING SECURE STREAM...</p>
           </div>
         ) : (
-          messages.map((msg) => {
-            const senderId = msg.sender_id || msg.user_id
-            const isOwn = senderId === userId
+          <>
+            {/* Sentinel for infinite scroll (at the top) */}
+            <div ref={sentinelRef} className="h-4 flex justify-center items-center">
+              {isFetchingNextPage && (
+                <div className="flex items-center gap-2 text-white/30 text-xs">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              )}
+            </div>
 
-            return (
-              <MessageItem
-                key={msg.id}
-                message={msg}
-                isOwn={isOwn}
-                isThemeAmber={isThemeAmber}
-              />
-            )
-          })
+            {messages.map((msg) => {
+              const senderId = msg.sender_id || msg.user_id
+              const isOwn = senderId === userId
+
+              return (
+                <MessageItem
+                  key={msg.id}
+                  message={msg}
+                  isOwn={isOwn}
+                  isThemeAmber={isThemeAmber}
+                />
+              )
+            })}
+          </>
         )}
       </div>
 

@@ -35,7 +35,13 @@ export function useScrollBehavior(
 
   // 메시지가 추가될 때의 스크롤 동작
   useEffect(() => {
-    if (!scrollRef.current || messages.length === 0) return
+    if (!scrollRef.current) return
+    
+    // 메시지가 비워지면 ID 추적 리셋
+    if (messages.length === 0) {
+      lastMessageIdRef.current = null
+      return
+    }
 
     const lastMsg = messages[messages.length - 1]
     const isNew = lastMsg.id !== lastMessageIdRef.current
@@ -52,18 +58,52 @@ export function useScrollBehavior(
     // 다른 사람 메시지일 때
     if (isUserScrolledUp) {
       // 보고 있는 위치가 위쪽이면 알림만 띄움
-      setShowNewMessageAlert(true)
+      // setTimeout을 사용하여 렌더링 사이클 외부에서 상태를 업데이트함 (ESLint 에러 방지)
+      setTimeout(() => setShowNewMessageAlert(true), 0)
     } else {
       // 보고 있는 위치가 바닥이면 같이 내림
       scrollToBottom()
     }
   }, [messages, userId, isUserScrolledUp])
 
+  const restoreScroll = (previousScrollHeight: number, previousScrollTop: number = 0) => {
+    if (scrollRef.current && previousScrollHeight > 0) {
+      const scrollEl = scrollRef.current
+      const originalBehavior = scrollEl.style.scrollBehavior
+      scrollEl.style.scrollBehavior = 'auto'
+      
+      const newScrollHeight = scrollEl.scrollHeight
+      const heightDiff = newScrollHeight - previousScrollHeight
+      
+      if (heightDiff > 0) {
+        // 늘어난 높이 + 기존에 있었던 미세한 위치값(scrollTop)을 더해줌
+        scrollEl.scrollTop = heightDiff + previousScrollTop
+      }
+      
+      scrollEl.style.scrollBehavior = originalBehavior
+    }
+  }
+
+  const scrollToBottomInstant = () => {
+    if (scrollRef.current) {
+      const scrollEl = scrollRef.current
+      const originalBehavior = scrollEl.style.scrollBehavior
+      scrollEl.style.scrollBehavior = 'auto'
+      scrollEl.scrollTop = scrollEl.scrollHeight
+      
+      setTimeout(() => {
+        if (scrollEl) scrollEl.style.scrollBehavior = originalBehavior
+      }, 50)
+    }
+  }
+
   return {
     scrollRef,
     showNewMessageAlert,
     setShowNewMessageAlert,
     scrollToBottom,
+    scrollToBottomInstant,
+    restoreScroll,
     handleScroll
   }
 }
