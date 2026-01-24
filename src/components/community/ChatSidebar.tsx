@@ -19,7 +19,7 @@ export default function ChatSidebar() {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const { unreadState, resetUnread, activeTab, setActiveTab } = useStore()
-  const isMobile = useMediaQuery("(max-width: 768px)")
+  const isMobile = useMediaQuery("(max-width: 767px)")
 
   // 도시 채팅 훅
   const { 

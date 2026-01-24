@@ -19,7 +19,7 @@ function App() {
   const setSelectedCity = useStore((state) => state.setSelectedCity)
   const { user } = useAuth()
   const [hasDetectedLocation, setHasDetectedLocation] = useState(false)
-  const isMobile = useMediaQuery("(max-width: 768px)")
+  const isMobile = useMediaQuery("(max-width: 767px)")
 
   // Helper functions
   const applyLocation = useCallback((countryCode: string) => {

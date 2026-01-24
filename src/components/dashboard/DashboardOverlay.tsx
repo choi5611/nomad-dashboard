@@ -19,7 +19,7 @@ export default function DashboardOverlay() {
   const { user, profile, fetchProfile, loading: authLoading } = useAuth()
   const [hasVisited, setHasVisited] = useState(false)
   const [checkingIn, setCheckingIn] = useState(false)
-  const isMobile = useMediaQuery("(max-width: 768px)")
+  const isMobile = useMediaQuery("(max-width: 767px)")
 
   // 방문 여부 확인
   useEffect(() => {
