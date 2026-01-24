@@ -10,23 +10,32 @@ export function useGeocoding() {
     
     setLoading(true)
     try {
-      // Photon API 사용 (OSM 기반, Nominatim보다 브라우저 환경에서 안정적)
-      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`)
+      // 영어 검색 결과가 가장 정확하므로 en으로 고정
+      const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=10&lang=en`)
       const data = await res.json()
-      console.log("🔍 Photon API Search Data:", data)
+      
+      console.log("🔍 Photon API Raw Data:", data)
 
       const mappedResults: City[] = (data.features || [])
-        .map((f: any) => ({
-          name: f.properties.name || f.properties.city || f.properties.state || "Unknown Location",
-          lat: f.geometry.coordinates[1],
-          lng: f.geometry.coordinates[0],
-          timezone: "UTC", 
-          countryCode: f.properties.countrycode?.toUpperCase() || f.properties.country?.substring(0, 2).toUpperCase() || "UN",
-          currencyCode: "USD",
-          priority: 3
-        }))
+        .map((f: any) => {
+          const p = f.properties
+          // 이름 구성: "장소명 (국가, 행정구역, 도시 등 가능한 모든 힌트)"
+          const hints = [p.city, p.district, p.state, p.country].filter(Boolean)
+          const uniqueHints = Array.from(new Set(hints.filter(h => h !== p.name))).slice(0, 2).join(', ')
+          const displayName = uniqueHints ? `${p.name} (${uniqueHints})` : p.name
 
-      console.log("✅ Mapped Results for UI:", mappedResults)
+          return {
+            name: displayName,
+            lat: f.geometry.coordinates[1],
+            lng: f.geometry.coordinates[0],
+            timezone: "UTC", 
+            countryCode: p.countrycode?.toUpperCase() || p.country?.substring(0, 2).toUpperCase() || "UN",
+            currencyCode: "USD",
+            priority: 3
+          }
+        })
+
+      console.log("✅ Final Mapped Results:", mappedResults)
       setResults(mappedResults)
       return mappedResults
     } catch (error) {

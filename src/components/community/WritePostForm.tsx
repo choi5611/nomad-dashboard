@@ -24,6 +24,8 @@ export default function WritePostForm({ onClose, onPostCreate, tabs }: WritePost
   
   const user = useAuth((state) => state.user)
   const selectedCity = useStore((state) => state.selectedCity)
+  const discoveredCity = useStore((state) => state.discoveredCity)
+  const registerCity = useStore((state) => state.registerCity)
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -89,10 +91,22 @@ export default function WritePostForm({ onClose, onPostCreate, tabs }: WritePost
         imageUrls = await uploadImages()
       }
 
-      // 2. 게시글 저장 (image_urls 배열 저장)
+      // 2. 게시글 저장 전: 임시 탐사 상태인지 체크하여 공식 등록
+      let finalCityId = selectedCity?.name?.toLowerCase() || "unknown"
+      
+      if (discoveredCity && selectedCity?.name === discoveredCity.name) {
+        console.log("🚀 Discovery Phase: Officially registering new land:", discoveredCity.name)
+        const success = await registerCity(discoveredCity)
+        if (success) {
+          toast.success(`축하합니다! ${discoveredCity.name}의 최초 발견자가 되셨습니다! 🏆`)
+          finalCityId = discoveredCity.name.toLowerCase()
+        }
+      }
+
+      // 3. 게시글 저장 (image_urls 배열 저장)
       const { error } = await supabase.from("posts").insert({
         author_id: user.id,
-        city_id: selectedCity?.name.toLowerCase() || "unknown",
+        city_id: finalCityId,
         category: categoryId,
         content: content.trim(),
         image_urls: imageUrls, // 배열로 저장

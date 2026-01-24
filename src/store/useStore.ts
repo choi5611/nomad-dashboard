@@ -47,6 +47,7 @@ interface AppState {
   fetchCities: () => Promise<void>
   discoveredCity: City | null
   setDiscoveredCity: (city: City | null) => void
+  registerCity: (city: City) => Promise<boolean>
 }
 
 const AUTO_ROTATE_DELAY = 5000 // 5초 후 다시 회전
@@ -150,4 +151,27 @@ export const useStore = create<AppState>((set, get) => ({
   },
   discoveredCity: null,
   setDiscoveredCity: (city) => set({ discoveredCity: city }),
+  registerCity: async (city) => {
+    try {
+      const { error } = await supabase.from('cities').insert({
+        name: city.name,
+        lat: city.lat,
+        lng: city.lng,
+        country_code: city.countryCode,
+        timezone: city.timezone || "UTC",
+        currency_code: city.currencyCode || "USD",
+        priority: 3
+      })
+
+      if (error) throw error
+      
+      // 상태 갱신
+      await useStore.getState().fetchCities()
+      set({ discoveredCity: null })
+      return true
+    } catch (e) {
+      console.error("Failed to register city:", e)
+      return false
+    }
+  }
 }))

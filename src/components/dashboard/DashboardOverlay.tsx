@@ -93,7 +93,29 @@ export default function DashboardOverlay() {
   }, [user, selectedCity, checkingIn, fetchProfile])
 
   const handleSelectCity = (city: City, isNew: boolean = false) => {
-    if (isNew) setDiscoveredCity(city)
+    // 💡 지능형 중복 체크: 이미 DB에 비슷한 좌표의 도시가 있는지 확인 (약 15km 반경)
+    if (isNew) {
+      const THRESHOLD = 0.15 
+      const existingMatch = dbCities?.find(db => 
+        Math.abs(db.lat - city.lat) < THRESHOLD && 
+        Math.abs(db.lng - city.lng) < THRESHOLD
+      )
+
+      if (existingMatch) {
+        console.log(`🤖 Auto-merging: "${city.name}" matches existing city "${existingMatch.name}"`)
+        city = existingMatch
+        isNew = false // 기존 핀으로 전환
+      }
+    }
+
+    console.log("📍 Selecting City:", city.name, isNew ? "(New Discovery)" : "(Existing)")
+    
+    if (isNew) {
+      setDiscoveredCity(city)
+    } else {
+      setDiscoveredCity(null) // 기존 도시 선택 시 탐사 핀 제거
+    }
+    
     setSelectedCity(city)
     setSearchQuery("")
     setGeoResults([])
@@ -151,7 +173,7 @@ export default function DashboardOverlay() {
               <Search className={`w-4 h-4 transition-colors ${isSearchOpen ? 'text-cyan-400' : 'text-white/30'}`} />
               <input
                 type="text"
-                placeholder="어디로 떠날까요?"
+                placeholder="어디로 떠날까요? (도시명 영어로 검색)"
                 className="bg-transparent border-none focus:ring-0 text-sm text-white placeholder:text-white/20 w-full ml-2 outline-none"
                 value={searchQuery}
                 onFocus={() => setIsSearchOpen(true)}
