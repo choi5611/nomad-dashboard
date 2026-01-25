@@ -8,6 +8,11 @@ import { useMessages } from "@/hooks/useMessages"
 import ChatHeader from "./ChatHeader"
 import MessageList from "./MessageList"
 import MessageInput from "./MessageInput"
+import CreateChatModal from "./CreateChatModal"
+import InviteFriendsModal from "./InviteFriendsModal"
+import { useFriends } from "@/hooks/useFriends"
+import { supabase } from "@/lib/supabase"
+import type { ChatRoom } from "@/types/friend"
 import type { ChatInfo } from "@/types/message"
 
 interface DirectMessageViewProps {
@@ -18,8 +23,35 @@ interface DirectMessageViewProps {
 export default function DirectMessageView({ chat, onBack }: DirectMessageViewProps) {
   const { user, profile } = useAuth()
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [roomData, setRoomData] = useState<ChatRoom | null>(null)
+  const [memberIds, setMemberIds] = useState<string[]>([])
+  const { friends } = useFriends(user, profile)
   const previousScrollHeightRef = useRef<number>(0)
   const previousScrollTopRef = useRef<number>(0)
+
+  // 방 정보 및 멤버 목록 가져오기
+  const fetchRoomInfo = async () => {
+    if (chat.type === 'dm') return
+
+    const { data: room } = await supabase
+      .from('chat_rooms')
+      .select('*')
+      .eq('id', chat.id)
+      .single()
+    if (room) setRoomData(room)
+
+    const { data: members } = await supabase
+      .from('room_members')
+      .select('user_id')
+      .eq('room_id', chat.id)
+    if (members) setMemberIds(members.map(m => m.user_id))
+  }
+
+  useEffect(() => {
+    fetchRoomInfo()
+  }, [chat.id, chat.type])
 
   // 익명 닉네임 관리
   const anonNickname = useAnonymousNickname(chat.id, chat.type, profile?.country_code)
@@ -89,7 +121,12 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
         chat={chat}
         anonNickname={anonNickname}
         onBack={onBack}
-        onLeave={chat.type === 'group' ? () => setIsLeaveModalOpen(true) : undefined}
+        onLeave={chat.type !== 'dm' ? () => {
+          if (chat.type === 'open') onBack()
+          else setIsLeaveModalOpen(true)
+        } : undefined}
+        onEdit={user && roomData?.created_by === user.id ? () => setIsEditModalOpen(true) : undefined}
+        onInvite={chat.type !== 'dm' ? () => setIsInviteModalOpen(true) : undefined}
       />
 
       <MessageList
@@ -120,6 +157,27 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
         cancelText="취소"
         onConfirm={() => handleLeaveChat(onBack)}
         onClose={() => setIsLeaveModalOpen(false)}
+      />
+
+      <CreateChatModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        user={user}
+        initialData={roomData}
+        onSuccess={(_, name) => {
+          chat.name = name
+          setIsEditModalOpen(false)
+          fetchRoomInfo()
+        }}
+      />
+
+      <InviteFriendsModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        roomId={chat.id}
+        currentMemberIds={memberIds}
+        friends={friends}
+        onSuccess={fetchRoomInfo}
       />
     </div>
   )

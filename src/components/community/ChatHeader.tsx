@@ -1,4 +1,4 @@
-import { ChevronLeft, Sparkles, LogOut } from "lucide-react"
+import { ChevronLeft, Sparkles, LogOut, Settings, UserPlus } from "lucide-react"
 import type { ChatInfo } from "@/types/message"
 
 interface ChatHeaderProps {
@@ -6,9 +6,11 @@ interface ChatHeaderProps {
   anonNickname: string
   onBack: () => void
   onLeave?: () => void
+  onEdit?: () => void
+  onInvite?: () => void
 }
 
-export default function ChatHeader({ chat, anonNickname, onBack, onLeave }: ChatHeaderProps) {
+export default function ChatHeader({ chat, anonNickname, onBack, onLeave, onEdit, onInvite }: ChatHeaderProps) {
   const isThemeAmber = chat.type === 'open'
 
   return (
@@ -46,16 +48,40 @@ export default function ChatHeader({ chat, anonNickname, onBack, onLeave }: Chat
         </div>
       </div>
 
-      {/* Leave Button (Only for Group Chat) */}
-      {chat.type === 'group' && onLeave && (
-        <button
-          onClick={onLeave}
-          className="p-2 hover:bg-red-500/10 rounded-lg text-white/30 hover:text-red-400 transition-all group relative"
-          title="Leave Chat"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
-      )}
+      <div className="flex items-center gap-1">
+        {/* Invite Button */}
+        {onInvite && (
+          <button
+            onClick={onInvite}
+            className="p-2 hover:bg-white/10 rounded-lg text-white/30 hover:text-indigo-400 transition-all group relative"
+            title="Invite Nomads"
+          >
+            <UserPlus className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Edit Button (For Owners) */}
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            className="p-2 hover:bg-white/10 rounded-lg text-white/30 hover:text-amber-400 transition-all"
+            title="Room Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Leave/Exit Button */}
+        {(chat.type === 'group' || chat.type === 'open') && onLeave && (
+          <button
+            onClick={onLeave}
+            className="p-2 hover:bg-red-500/10 rounded-lg text-white/30 hover:text-red-400 transition-all group relative"
+            title={chat.type === 'open' ? 'Exit Lounge' : 'Leave Group'}
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        )}
+      </div>
     </div>
   )
 }

@@ -11,6 +11,9 @@ export interface ChatRoom {
   id: string
   name: string
   created_by: string
+  description?: string | null    
+  is_open?: boolean              
+  tags?: string[]                
   member_count?: number
   custom_name?: string | null
 }

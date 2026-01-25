@@ -142,6 +142,7 @@ export default function ChatSidebar() {
               </div>
             ) : (
               <OpenChatRoomList
+                user={user}
                 unreadState={unreadState}
                 onRoomClick={handleOpenRoomClick}
               />

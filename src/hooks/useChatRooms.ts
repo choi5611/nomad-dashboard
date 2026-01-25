@@ -26,7 +26,7 @@ export function useChatRooms(user: User | null) {
     const roomIds = memberData.map(r => r.room_id)
     const customNames = new Map(memberData.map(r => [r.room_id, r.custom_name]))
 
-    // 2. 방 정보 가져오기
+    // 2. 방 정보 가져오기 (is_open 포함 전체 데이터)
     const { data: rooms, error } = await supabase
       .from('chat_rooms')
       .select('*')
@@ -38,7 +38,7 @@ export function useChatRooms(user: User | null) {
       return
     }
 
-    // 3. custom_name 병합
+    // 3. 데이터 병합
     const roomsWithCustomName = (rooms || []).map(room => ({
       ...room,
       custom_name: customNames.get(room.id) || null
