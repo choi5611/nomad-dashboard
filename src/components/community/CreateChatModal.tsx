@@ -24,16 +24,18 @@ export default function CreateChatModal({ isOpen, onClose, user, onSuccess, init
   const isEditMode = !!initialData
 
   useEffect(() => {
-    if (initialData) {
-      setName(initialData.name)
-      setDescription(initialData.description || "")
-      setIsOpenChat(initialData.is_open ?? true)
-      setTags(initialData.tags?.join(", ") || "")
-    } else {
-      setName("")
-      setDescription("")
-      setIsOpenChat(true)
-      setTags("")
+    if (isOpen) {
+      if (initialData) {
+        setName(initialData.name)
+        setDescription(initialData.description || "")
+        setIsOpenChat(initialData.is_open ?? true)
+        setTags(initialData.tags?.join(", ") || "")
+      } else {
+        setName("")
+        setDescription("")
+        setIsOpenChat(true)
+        setTags("")
+      }
     }
   }, [initialData, isOpen])
 
@@ -60,14 +62,43 @@ export default function CreateChatModal({ isOpen, onClose, user, onSuccess, init
       }
 
       if (isEditMode) {
-        const { error } = await supabase
+        console.log('Attempting to update chat_rooms:', {
+          roomId: initialData.id,
+          roomData,
+          userId: user.id
+        })
+
+        const { data: updateResult, error: updateError } = await supabase
           .from('chat_rooms')
           .update(roomData)
           .eq('id', initialData.id)
+          .select()
 
-        if (error) throw error
+        console.log('chat_rooms update result:', { updateResult, updateError })
+
+        if (updateError) {
+          console.error('chat_rooms update failed:', updateError)
+          throw updateError
+        }
+
+        if (!updateResult || updateResult.length === 0) {
+          console.error('No rows updated in chat_rooms - possible RLS issue')
+          toast.error("채팅방 이름 수정 실패: 권한이 없습니다. 개설자만 수정할 수 있습니다.")
+          return
+        }
+
+        // 개설자의 custom_name도 업데이트 (FRIENDS 탭에서 표시되도록)
+        const { data: memberUpdateResult, error: memberError } = await supabase
+          .from('room_members')
+          .update({ custom_name: name.trim() })
+          .eq('room_id', initialData.id)
+          .eq('user_id', user.id)
+          .select()
+
+        console.log('room_members update result:', { memberUpdateResult, memberError })
+
         toast.success("방 정보가 수정되었습니다!")
-        onSuccess(initialData.id, name.trim())
+        onSuccess(initialData.id, name.trim(), isOpenChat)
       } else {
         const { data, error } = await supabase
           .from('chat_rooms')

@@ -42,6 +42,7 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
       .select('*')
       .eq('id', chat.id)
       .single()
+
     if (room) setRoomData(room)
 
     const { data: members } = await supabase
@@ -105,6 +106,15 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
 
   const isThemeAmber = chat.type === 'open'
 
+  // 수정 권한 확인
+  const canEdit = user && roomData?.created_by === user.id
+
+  // 수정 모달 열기 전에 최신 데이터 가져오기
+  const handleEditClick = async () => {
+    await fetchRoomInfo()
+    setIsEditModalOpen(true)
+  }
+
   return (
     <div className={`flex-1 flex flex-col overflow-hidden ${isThemeAmber ? 'bg-amber-950/20' : 'bg-slate-900/50'}`}>
       <ChatHeader
@@ -112,7 +122,7 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
         anonNickname={anonNickname}
         onBack={onBack}
         onLeave={chat.type !== 'dm' ? () => setIsLeaveModalOpen(true) : undefined}
-        onEdit={user && roomData?.created_by === user.id ? () => setIsEditModalOpen(true) : undefined}
+        onEdit={canEdit ? handleEditClick : undefined}
         onInvite={chat.type !== 'dm' ? () => setIsInviteModalOpen(true) : undefined}
         onInfo={chat.type !== 'dm' ? () => setIsPreviewOpen(true) : undefined}
       />
@@ -156,10 +166,10 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
         onClose={() => setIsEditModalOpen(false)}
         user={user}
         initialData={roomData}
-        onSuccess={(_, name, __) => {
+        onSuccess={async (_, name, __) => {
           chat.name = name
           setIsEditModalOpen(false)
-          fetchRoomInfo()
+          await fetchRoomInfo()
         }}
       />
 

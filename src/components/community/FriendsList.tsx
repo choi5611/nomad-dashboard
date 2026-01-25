@@ -17,19 +17,25 @@ interface ChatRoomItemProps {
   setEditingName: (name: string) => void
   setEditingRoomId: (id: string | null) => void
   handleUpdateRoomName: (id: string) => void
+  currentUserId?: string
 }
 
-function ChatRoomItem({ 
-  room, 
-  isLounge, 
-  editingRoomId, 
-  editingName, 
-  setEditingName, 
-  setEditingRoomId, 
-  handleUpdateRoomName 
+function ChatRoomItem({
+  room,
+  isLounge,
+  editingRoomId,
+  editingName,
+  setEditingName,
+  setEditingRoomId,
+  handleUpdateRoomName,
+  currentUserId
 }: ChatRoomItemProps) {
   const isEditing = editingRoomId === room.id
   const unreadCount = useStore.getState().unreadState.rooms[room.id] || 0
+
+  // 오픈채팅/비밀채팅의 경우 개설자만 수정 가능
+  // 일반 그룹채팅(created_by가 없는 경우)은 모두 수정 가능
+  const canEdit = !room.created_by || room.created_by === currentUserId
 
   return (
     <div
@@ -79,16 +85,18 @@ function ChatRoomItem({
               <p className="text-sm font-bold text-white uppercase tracking-tighter truncate">
                 {room.custom_name || room.name}
               </p>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setEditingRoomId(room.id)
-                  setEditingName(room.custom_name || room.name)
-                }}
-                className="p-1 opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded text-white/40 hover:text-white transition-all"
-              >
-                <Pencil className="w-3 h-3" />
-              </button>
+              {canEdit && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditingRoomId(room.id)
+                    setEditingName(room.custom_name || room.name)
+                  }}
+                  className="p-1 opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded text-white/40 hover:text-white transition-all"
+                >
+                  <Pencil className="w-3 h-3" />
+                </button>
+              )}
             </div>
           )}
           <p className="text-[10px] text-white/30 uppercase font-mono">
@@ -190,14 +198,15 @@ export default function FriendsList() {
               </h3>
               <div className="space-y-2">
                 {chatRooms.filter(r => !r.is_open).map(room => (
-                  <ChatRoomItem 
-                    key={room.id} 
-                    room={room} 
-                    editingRoomId={editingRoomId} 
-                    editingName={editingName} 
-                    setEditingName={setEditingName} 
-                    setEditingRoomId={setEditingRoomId} 
-                    handleUpdateRoomName={handleUpdateRoomName} 
+                  <ChatRoomItem
+                    key={room.id}
+                    room={room}
+                    editingRoomId={editingRoomId}
+                    editingName={editingName}
+                    setEditingName={setEditingName}
+                    setEditingRoomId={setEditingRoomId}
+                    handleUpdateRoomName={handleUpdateRoomName}
+                    currentUserId={user?.id}
                   />
                 ))}
               </div>
@@ -212,15 +221,16 @@ export default function FriendsList() {
               </h3>
               <div className="space-y-2">
                 {chatRooms.filter(r => r.is_open).map(room => (
-                  <ChatRoomItem 
-                    key={room.id} 
-                    room={room} 
-                    isLounge 
-                    editingRoomId={editingRoomId} 
-                    editingName={editingName} 
-                    setEditingName={setEditingName} 
-                    setEditingRoomId={setEditingRoomId} 
-                    handleUpdateRoomName={handleUpdateRoomName} 
+                  <ChatRoomItem
+                    key={room.id}
+                    room={room}
+                    isLounge
+                    editingRoomId={editingRoomId}
+                    editingName={editingName}
+                    setEditingName={setEditingName}
+                    setEditingRoomId={setEditingRoomId}
+                    handleUpdateRoomName={handleUpdateRoomName}
+                    currentUserId={user?.id}
                   />
                 ))}
               </div>
