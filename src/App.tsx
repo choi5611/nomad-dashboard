@@ -9,7 +9,6 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/store/useAuth"
 import { useStore } from "@/store/useStore"
 import { Toaster } from "sonner"
-import { isOpenChatRoom } from "@/lib/constants"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import MobileNav from "@/components/layout/MobileNav"
 
@@ -110,6 +109,27 @@ function App() {
     }
   }, [hasDetectedLocation, detectAndSetInitialLocation, applyLocation])
 
+  // Joined Rooms Sync
+  useEffect(() => {
+    if (!user) {
+      useStore.setState({ joinedRooms: [] })
+      return
+    }
+    
+    const { fetchJoinedRooms } = useStore.getState()
+    fetchJoinedRooms(user.id)
+
+    // 멤버십 또는 방 정보 변경 시 동기화
+    const channel = supabase.channel('joined-rooms-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_members', filter: `user_id=eq.${user.id}` }, () => fetchJoinedRooms(user.id))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, () => fetchJoinedRooms(user.id))
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user])
+
   // Notifications
   useEffect(() => {
     if (!user) return
@@ -128,14 +148,17 @@ function App() {
 
     const dmChannel = supabase.channel('global-dm-tracker')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, (payload) => {
-        const { isChatOpen, activeChat, activeTab } = useStore.getState()
+        const { isChatOpen, activeChat, activeTab, joinedRooms } = useStore.getState()
         if (payload.new.sender_id !== currentUserId) {
           if (payload.new.receiver_id === currentUserId) {
             const isVisible = isChatOpen && activeTab === 'friends' && activeChat?.type === 'dm' && activeChat?.id === payload.new.sender_id
             if (!isVisible) incrementUnread('dm', payload.new.sender_id)
           } else if (payload.new.room_id) {
-            const isOpenChat = isOpenChatRoom(payload.new.room_id)
-            const targetTab = isOpenChat ? 'open' : 'friends'
+            // 내가 가속된(Joined) 방인지 확인
+            const room = joinedRooms.find(r => r.id === payload.new.room_id)
+            if (!room) return // 참여하지 않은 방의 알림은 무시 (오픈채팅/그룹 공통)
+
+            const targetTab = room.is_open ? 'open' : 'friends'
             const isVisible = isChatOpen && activeTab === targetTab && activeChat?.id === payload.new.room_id
             if (!isVisible) incrementUnread('room', payload.new.room_id)
           }
@@ -145,9 +168,12 @@ function App() {
 
     const groupChannel = supabase.channel('global-group-tracker')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages' }, (payload) => {
-        const { isChatOpen, activeChat, activeTab } = useStore.getState()
+        const { isChatOpen, activeChat, activeTab, joinedRooms } = useStore.getState()
         if (payload.new.user_id !== currentUserId) {
-             const isVisible = isChatOpen && activeTab === 'friends' && activeChat?.type === 'group' && activeChat?.id === payload.new.room_id
+             const room = joinedRooms.find(r => r.id === payload.new.room_id)
+             if (!room) return // 참여하지 않은 그룹의 알림 무시 (보안: RLS가 막아주겠지만 실시간 필터링 차원)
+
+             const isVisible = isChatOpen && activeTab === 'friends' && activeChat?.id === payload.new.room_id
              if (!isVisible) incrementUnread('room', payload.new.room_id)
         }
       })

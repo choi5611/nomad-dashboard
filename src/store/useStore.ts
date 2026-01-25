@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
+import type { ChatRoom } from '@/types/friend'
 
 export interface City {
   name: string
@@ -48,6 +49,9 @@ interface AppState {
   discoveredCity: City | null
   setDiscoveredCity: (city: City | null) => void
   registerCity: (city: City) => Promise<boolean>
+  // 참여 중인 채팅방 정보
+  joinedRooms: ChatRoom[]
+  fetchJoinedRooms: (userId: string) => Promise<void>
 }
 
 const AUTO_ROTATE_DELAY = 5000 // 5초 후 다시 회전
@@ -180,6 +184,38 @@ export const useStore = create<AppState>((set, get) => ({
     } catch (e) {
       console.error("Failed to register city:", e)
       return false
+    }
+  },
+  joinedRooms: [],
+  fetchJoinedRooms: async (userId: string) => {
+    try {
+      const { data: memberData } = await supabase
+        .from('room_members')
+        .select('room_id, custom_name')
+        .eq('user_id', userId)
+
+      if (!memberData || memberData.length === 0) {
+        set({ joinedRooms: [] })
+        return
+      }
+
+      const roomIds = memberData.map(r => r.room_id)
+      const customNames = new Map(memberData.map(r => [r.room_id, r.custom_name]))
+
+      const { data: rooms } = await supabase
+        .from('chat_rooms')
+        .select('*')
+        .in('id', roomIds)
+
+      if (rooms) {
+        const roomsWithCustomName = rooms.map(room => ({
+          ...room,
+          custom_name: customNames.get(room.id) || null
+        }))
+        set({ joinedRooms: roomsWithCustomName })
+      }
+    } catch (err) {
+      console.error('Error fetching joined rooms globally:', err)
     }
   }
 }))

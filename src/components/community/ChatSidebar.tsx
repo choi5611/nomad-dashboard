@@ -4,7 +4,6 @@ import { X, Activity } from "lucide-react"
 import { useStore } from "@/store/useStore"
 import { useAuth } from "@/store/useAuth"
 import { useCityChat } from "@/hooks/useCityChat"
-import { isOpenChatRoom } from "@/lib/constants"
 import UserProfileModal from "./UserProfileModal"
 import FriendsList from "./FriendsList"
 import DirectMessageView from "./DirectMessageView"
@@ -14,11 +13,22 @@ import OpenChatRoomList from "./OpenChatRoomList"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 
 export default function ChatSidebar() {
-  const { isChatOpen, closeChat, selectedCity, isSidebarOpen, activeChat, setActiveChat } = useStore()
+  const { 
+    isChatOpen, 
+    closeChat, 
+    selectedCity, 
+    isSidebarOpen, 
+    activeChat, 
+    setActiveChat,
+    unreadState, 
+    resetUnread, 
+    activeTab, 
+    setActiveTab,
+    joinedRooms 
+  } = useStore()
   const { user, profile } = useAuth()
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
-  const { unreadState, resetUnread, activeTab, setActiveTab } = useStore()
   const isMobile = useMediaQuery("(max-width: 767px)")
 
   // 도시 채팅 훅
@@ -39,19 +49,25 @@ export default function ChatSidebar() {
   // 읽지 않은 메시지 계산
   const unreadCounts = useMemo(() => {
     const dmCount = Object.values(unreadState.dms).reduce((a, b) => a + b, 0)
-    const groupRoomCount = Object.entries(unreadState.rooms)
-      .filter(([id]) => !isOpenChatRoom(id))
-      .reduce((a, b) => a + b[1], 0)
-    const openRoomCount = Object.entries(unreadState.rooms)
-      .filter(([id]) => isOpenChatRoom(id))
-      .reduce((a, b) => a + b[1], 0)
+    
+    let groupRoomCount = 0
+    let openRoomCount = 0
+
+    // 내가 참여 중인 방들에 대해서만 알림 집계
+    Object.entries(unreadState.rooms).forEach(([roomId, count]) => {
+      const room = joinedRooms.find(r => r.id === roomId)
+      if (room) {
+        if (room.is_open) openRoomCount += count
+        else groupRoomCount += count
+      }
+    })
 
     return {
       city: unreadState.city,
       friends: dmCount + groupRoomCount,
       open: openRoomCount,
     }
-  }, [unreadState])
+  }, [unreadState, joinedRooms])
 
   const openProfile = (id: string) => {
     setSelectedProfileId(id)
