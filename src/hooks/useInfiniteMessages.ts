@@ -28,23 +28,34 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
         count = result.count
       } else {
         // 그룹 및 오픈 채팅: 본인이 입장한 시간 가져오기
-        const { data: memberInfo } = await supabase
-          .from('room_members')
-          .select('created_at')
-          .eq('room_id', chat.id)
-          .eq('user_id', userId)
-          .maybeSingle() // single() 대신 maybeSingle() 사용 (데이터 없어도 에러 안 남)
+        let joinedAt = new Date(0).toISOString()
 
-        // 만약 가입 정보가 아직 없다면 (방금 입장한 경우 등) 1초 전을 기준으로 함
-        const joinedAt = memberInfo?.created_at || new Date(Date.now() - 1000).toISOString()
+        try {
+          if (chat.id && chat.id.length > 20) {
+            // created_at이 없을 수도 있으므로 *로 시도하거나 더 안전하게 처리
+            const { data: memberInfo } = await supabase
+              .from('room_members')
+              .select('*') 
+              .eq('room_id', chat.id)
+              .eq('user_id', userId)
+              .maybeSingle()
 
+            if (memberInfo && (memberInfo as any).created_at) {
+              joinedAt = (memberInfo as any).created_at
+            }
+          }
+        } catch (err) {
+          console.warn("Failed to fetch joinedAt:", err)
+        }
+
+        // 💡 중요: !user_id 또는 !sender_id 처럼 관계 힌트를 명시해야 400 에러가 안 납니다.
         const query = chat.type === 'group' 
-          ? supabase.from('group_messages').select('*, sender:profiles(username, avatar_url)', { count: "exact" })
-          : supabase.from('direct_messages').select('*', { count: "exact" })
+          ? supabase.from('group_messages').select('*, sender:profiles!user_id(username, avatar_url)', { count: "exact" })
+          : supabase.from('direct_messages').select('*, sender:profiles!sender_id(username, avatar_url)', { count: "exact" })
 
         const result = await query
           .eq('room_id', chat.id)
-          .gte('created_at', joinedAt) // 입장 시간 이후 데이터만!
+          .gte('created_at', joinedAt)
           .order('created_at', { ascending: false })
           .range(from, to)
 

@@ -11,6 +11,7 @@ import { useStore } from "@/store/useStore"
 import { Toaster } from "sonner"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import MobileNav from "@/components/layout/MobileNav"
+import type { ChatRoom } from "@/types/friend"
 
 function App() {
   const setSession = useAuth((state) => state.setSession)
@@ -147,16 +148,25 @@ function App() {
       .subscribe()
 
     const dmChannel = supabase.channel('global-dm-tracker')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, (payload) => {
-        const { isChatOpen, activeChat, activeTab, joinedRooms } = useStore.getState()
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'direct_messages' }, async (payload) => {
+        const { isChatOpen, activeChat, activeTab } = useStore.getState()
         if (payload.new.sender_id !== currentUserId) {
           if (payload.new.receiver_id === currentUserId) {
             const isVisible = isChatOpen && activeTab === 'friends' && activeChat?.type === 'dm' && activeChat?.id === payload.new.sender_id
             if (!isVisible) incrementUnread('dm', payload.new.sender_id)
           } else if (payload.new.room_id) {
-            // 내가 가속된(Joined) 방인지 확인
-            const room = joinedRooms.find(r => r.id === payload.new.room_id)
-            if (!room) return // 참여하지 않은 방의 알림은 무시 (오픈채팅/그룹 공통)
+            // 최신 참여 목록을 다시 확인하여 정확도 높임
+            const { joinedRooms, fetchJoinedRooms } = useStore.getState()
+            let room = joinedRooms.find(r => r.id === payload.new.room_id)
+            
+            // 만약 캐시에 없으면 (방금 입장한 경우) 서버에서 직접 확인
+            if (!room && user) {
+              const { data } = await supabase.from('chat_rooms').select('*').eq('id', payload.new.room_id).single()
+              if (data) room = data as ChatRoom
+              fetchJoinedRooms(user.id) // 캐시 업데이트도 백그라운드에서 진행
+            }
+
+            if (!room) return
 
             const targetTab = room.is_open ? 'open' : 'friends'
             const isVisible = isChatOpen && activeTab === targetTab && activeChat?.id === payload.new.room_id

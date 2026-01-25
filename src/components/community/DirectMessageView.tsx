@@ -10,6 +10,7 @@ import MessageList from "./MessageList"
 import MessageInput from "./MessageInput"
 import CreateChatModal from "./CreateChatModal"
 import InviteFriendsModal from "./InviteFriendsModal"
+import RoomPreviewModal from "./RoomPreviewModal"
 import { useFriends } from "@/hooks/useFriends"
 import { supabase } from "@/lib/supabase"
 import type { ChatRoom } from "@/types/friend"
@@ -25,6 +26,7 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false) // 정보 모달용
   const [roomData, setRoomData] = useState<ChatRoom | null>(null)
   const [memberIds, setMemberIds] = useState<string[]>([])
   const { friends } = useFriends(user, profile)
@@ -56,10 +58,9 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
   // 익명 닉네임 관리
   const anonNickname = useAnonymousNickname(chat.id, chat.type, profile?.country_code)
 
-  // 스크롤 동작 관리 - scrollToBottom 함수를 먼저 만듦
+  // 스크롤 동작 관리
   const scrollControlTemp = useScrollBehavior([], user?.id)
 
-  // 메시지 관리
   const { messages, loading, fetchNextPage, hasNextPage, isFetchingNextPage, handleSendMessage, handleLeaveChat } = useMessages(
     chat,
     user,
@@ -67,20 +68,14 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
     scrollControlTemp.scrollToBottom
   )
 
-  // 실제 messages를 받는 스크롤 동작
   const scrollControl = useScrollBehavior(messages, user?.id)
 
-  // 무한 스크롤 감지 (메시지 목록 맨 위)
-  const { ref: sentinelRef, inView } = useInView({
-    threshold: 0,
-  })
+  const { ref: sentinelRef, inView } = useInView({ threshold: 0 })
 
-  // 이전 메시지 로드 전 스크롤 위치 저장 (scrollHeight 기준)
   useEffect(() => {
     if (inView && hasNextPage && !isFetchingNextPage) {
       const scrollEl = scrollControl.scrollRef.current
       if (scrollEl) {
-        // 현재 총 높이와 현재 스크롤 위치를 모두 저장 (미세 보정용)
         previousScrollHeightRef.current = scrollEl.scrollHeight
         previousScrollTopRef.current = scrollEl.scrollTop
       }
@@ -90,13 +85,10 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
 
   const isInitialLoadDoneRef = useRef(false)
 
-  // 채팅방 변경 시 초기화
   useEffect(() => {
     isInitialLoadDoneRef.current = false
   }, [chat.id])
 
-  // 이전 메시지 로드 후 스크롤 위치 복원
-  // useLayoutEffect를 사용하여 화면이 그려지기 전에 스크롤 위치를 조절하여 루프를 방지합니다.
   useLayoutEffect(() => {
     if (!isFetchingNextPage && previousScrollHeightRef.current > 0) {
       scrollControl.restoreScroll(previousScrollHeightRef.current, previousScrollTopRef.current)
@@ -105,7 +97,6 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
     }
   }, [isFetchingNextPage, messages.length, scrollControl])
 
-  // 초기 로드 완료 시 스크롤을 맨 아래로 (즉시, 애니메이션 없이, 최초 1회만)
   useEffect(() => {
     if (!loading && messages.length > 0 && !isInitialLoadDoneRef.current) {
       scrollControl.scrollToBottomInstant()
@@ -121,12 +112,10 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
         chat={chat}
         anonNickname={anonNickname}
         onBack={onBack}
-        onLeave={chat.type !== 'dm' ? () => {
-          if (chat.type === 'open') onBack()
-          else setIsLeaveModalOpen(true)
-        } : undefined}
+        onLeave={chat.type !== 'dm' ? () => setIsLeaveModalOpen(true) : undefined}
         onEdit={user && roomData?.created_by === user.id ? () => setIsEditModalOpen(true) : undefined}
         onInvite={chat.type !== 'dm' ? () => setIsInviteModalOpen(true) : undefined}
+        onInfo={chat.type !== 'dm' ? () => setIsPreviewOpen(true) : undefined}
       />
 
       <MessageList
@@ -151,8 +140,12 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
 
       <ConfirmModal
         isOpen={isLeaveModalOpen}
-        title="Leave Group Chat"
-        message="정말 이 채팅방을 나가시겠습니까? 대화 내용은 더 이상 볼 수 없습니다."
+        title={chat.type === 'open' ? "Exit Lounge" : "Leave Group Chat"}
+        message={
+          chat.type === 'open' 
+            ? "이 오픈채팅방 목록에서 나가시겠습니까? 다시 입장하기 전까지 알림을 받을 수 없습니다."
+            : "정말 이 채팅방을 나가시겠습니까? 대화 내용은 더 이상 볼 수 없습니다."
+        }
         confirmText="나가기"
         cancelText="취소"
         onConfirm={() => handleLeaveChat(onBack)}
@@ -178,6 +171,13 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
         currentMemberIds={memberIds}
         friends={friends}
         onSuccess={fetchRoomInfo}
+      />
+
+      <RoomPreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        room={roomData}
+        onJoin={() => setIsPreviewOpen(false)} // 이미 들어와 있으므로 그냥 닫기
       />
     </div>
   )

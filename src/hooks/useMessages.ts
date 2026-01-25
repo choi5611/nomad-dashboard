@@ -164,10 +164,10 @@ export function useMessages(
   }
 
   const handleLeaveChat = async (onBack: () => void) => {
-    if (!chat.type || chat.type !== 'group' || !user) return
+    if (!chat.id || !user) return
 
     try {
-      // 1. 멤버십 조회
+      // 1. 멤버십 정보 조회
       const { data: memberData, error: fetchError } = await supabase
         .from('room_members')
         .select('*')
@@ -178,41 +178,38 @@ export function useMessages(
       if (fetchError) throw fetchError
 
       if (!memberData) {
-        toast.error("멤버 정보를 찾을 수 없습니다. (이미 나갔거나 접근 권한 없음)")
+        toast.error("멤버 정보를 찾을 수 없습니다.")
         onBack()
         return
       }
 
-      // 시스템 메시지 전송
-      try {
-        await supabase.from('group_messages').insert({
-          room_id: chat.id,
-          user_id: user.id,
-          content: `[SYSTEM] ${profile?.username || 'Unknown'}님이 나갔습니다.`
-        })
-      } catch (msgErr) {
-        console.error('Failed to send leave message', msgErr)
+      // 시스템 메시지 (오픈채팅은 익명이라 선택 사항이지만, 그룹은 필수)
+      if (chat.type === 'group') {
+        try {
+          await supabase.from('group_messages').insert({
+            room_id: chat.id,
+            user_id: user.id,
+            content: `[SYSTEM] ${profile?.username || 'Unknown'}님이 나갔습니다.`
+          })
+        } catch (msgErr) {
+          console.error('Failed to send leave message', msgErr)
+        }
       }
 
-      // 2. 멤버십 삭제
-      let deleteQuery = supabase.from('room_members').delete({ count: 'exact' })
-
-      if (memberData.id) {
-        deleteQuery = deleteQuery.eq('id', memberData.id)
-      } else {
-        deleteQuery = deleteQuery.eq('room_id', chat.id).eq('user_id', user.id)
-      }
-
-      const { error: deleteError, count } = await deleteQuery
+      // 2. 멤버십 삭제 (완전 나가기)
+      const { error: deleteError } = await supabase
+        .from('room_members')
+        .delete()
+        .eq('room_id', chat.id)
+        .eq('user_id', user.id)
 
       if (deleteError) throw deleteError
 
-      if (count === 0) {
-        toast.error("삭제 실패: 권한(RLS) 부족 가능성이 있습니다.")
-        return
-      }
-
-      toast.success("채팅방을 나갔습니다.")
+      toast.success(chat.type === 'open' ? "라운지에서 퇴장했습니다." : "그룹에서 퇴장했습니다.")
+      
+      // 3. 전역 상태 갱신 및 뒤로 가기
+      const { fetchJoinedRooms } = useStore.getState()
+      fetchJoinedRooms(user.id)
       onBack()
     } catch (err: any) {
       console.error('❌ Leave Chat Error:', err)

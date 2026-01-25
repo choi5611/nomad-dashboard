@@ -79,9 +79,22 @@ export function useChatRooms(user: User | null) {
     fetchChatRooms()
 
     const roomChannel = supabase
-      .channel('room_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'room_members', filter: `user_id=eq.${user.id}` }, () => fetchChatRooms())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_rooms' }, () => fetchChatRooms())
+      .channel('room_changes_tracking')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'room_members', 
+        filter: `user_id=eq.${user.id}` 
+      }, () => {
+        fetchChatRooms()
+        // 전역 참여 목록 데이터도 갱신 유도
+        import('@/store/useStore').then(m => m.useStore.getState().fetchJoinedRooms(user.id))
+      })
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'chat_rooms' 
+      }, () => fetchChatRooms())
       .subscribe()
 
     return () => {
