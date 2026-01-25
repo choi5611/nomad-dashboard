@@ -25,28 +25,44 @@ export function useMessages(
     isLoading
   } = useInfiniteMessages(chat, user?.id)
 
-  // 모든 메시지를 합치기 (오래된→최신 순 정렬)
-  const messages = [...(data?.pages || [])].reverse()
-    .flatMap(page => [...page.messages].reverse())
+  // 1. 모든 페이지의 메시지를 하나의 배열로 펼침 (최신 페이지가 0번 인덱스이므로 역순 처리 개념 주의)
+  const rawMessages = data?.pages.flatMap(page => page.messages) || []
+
+  // 2. 중복 제거 (Map 사용, ID 기준)
+  const uniqueMessagesMap = new Map()
+  rawMessages.forEach((msg) => {
+    uniqueMessagesMap.set(msg.id, msg)
+  })
+
+  // 3. 시간순 정렬 (오래된 것 -> 최신 것)
+  const messages = Array.from(uniqueMessagesMap.values()).sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  )
 
   // 캐시 업데이트 헬퍼 함수
   const updateMessageCache = (newMessage: DMMessage) => {
     queryClient.setQueryData(queryKey, (oldData: any) => {
-      if (!oldData) return oldData
+      // 기존 데이터가 아예 없으면 (첫 메시지인 경우 등) 새 페이지 구조 생성
+      if (!oldData || !oldData.pages || oldData.pages.length === 0) {
+        return {
+          pages: [{ messages: [newMessage], totalCount: 1 }],
+          pageParams: [0]
+        }
+      }
       
-      // 이미 존재하는 메시지인지 확인 (중복 방지)
+      // 이미 존재하는 메시지인지 확인 (중복 방지 - ID 기준)
       const messageExists = oldData.pages.some((page: any) => 
         page.messages.some((m: any) => m.id === newMessage.id)
       )
       if (messageExists) return oldData
 
-      // 최신 페이지(첫 번째 페이지)의 맨 앞에 새 메시지 추가
+      // 기존 데이터 보존하면서 최신 페이지(첫 번째 페이지)의 맨 앞에 새 메시지 추가
+      // (React Query의 infinite query 데이터 구조 유지)
       const newPages = [...oldData.pages]
-      if (newPages.length > 0) {
-        newPages[0] = {
-          ...newPages[0],
-          messages: [newMessage, ...newPages[0].messages]
-        }
+      newPages[0] = {
+        ...newPages[0],
+        messages: [newMessage, ...newPages[0].messages],
+        totalCount: (newPages[0].totalCount || 0) + 1
       }
       
       return { ...oldData, pages: newPages }
@@ -56,6 +72,7 @@ export function useMessages(
     setTimeout(scrollToBottom, 50)
   }
 
+  // 실시간 구독 (모든 메시지의 유일한 진실의 원천)
   useEffect(() => {
     if (!user) return
 
@@ -63,14 +80,13 @@ export function useMessages(
     const { resetUnread } = useStore.getState()
     resetUnread(chat.type === 'dm' ? 'dm' : 'room', chat.id)
 
-    // 실시간 구독
     const tableName = chat.type === 'group' ? 'group_messages' : 'direct_messages'
     const filterConfig = chat.type === 'dm'
       ? `receiver_id=eq.${user.id}`
       : `room_id=eq.${chat.id}`
 
     const channel = supabase
-      .channel(`chat:${chat.id}:${Date.now()}`) // 채널 ID 고유화
+      .channel(`chat:${chat.id}:${Date.now()}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -79,9 +95,6 @@ export function useMessages(
       }, async (payload) => {
         const newMessage = payload.new as any
         const senderId = newMessage.sender_id || newMessage.user_id
-
-        // 본인이 보낸 메시지는 handleSendMessage에서 직접 처리하므로 무시
-        if (senderId === user.id) return
 
         // sender 정보 가져오기
         if (!newMessage.sender) {
@@ -93,12 +106,13 @@ export function useMessages(
           if (profileData) newMessage.sender = profileData
         }
 
-        // DM의 경우 필터링
-        if (chat.type === 'dm' && newMessage.sender_id !== chat.id) return
-
-        // 캐시 업데이트 및 알림 리셋
+        // 1. 캐시 업데이트 (내가 보낸 거든 남이 보낸 거든 똑같이 처리)
         updateMessageCache(newMessage)
-        useStore.getState().resetUnread(chat.type === 'dm' ? 'dm' : 'room', chat.id)
+        
+        // 2. 남이 보낸 메시지면 알림 리셋
+        if (senderId !== user.id) {
+          useStore.getState().resetUnread(chat.type === 'dm' ? 'dm' : 'room', chat.id)
+        }
       })
       .subscribe()
 
@@ -107,29 +121,11 @@ export function useMessages(
     }
   }, [user, chat.id, chat.type])
 
+  // 메시지 전송 (낙관적 업데이트 제거 -> 서버 응답 대기)
   const handleSendMessage = async (content: string, anonNickname: string) => {
     if (!user || !content.trim()) return
 
-    const tempId = Math.random().toString(36).substring(7)
     const isAnon = chat.type === 'open'
-
-    // 낙관적 업데이트를 위해 캐시에 즉시 추가
-    const optimisticMsg: DMMessage = {
-      id: tempId,
-      sender_id: user.id,
-      content,
-      is_anonymous: isAnon,
-      nickname: isAnon ? anonNickname : undefined,
-      created_at: new Date().toISOString(),
-      sender: {
-        username: profile?.username || "Me",
-        avatar_url: profile?.avatar_url || null,
-        country_code: profile?.country_code
-      },
-      ...(chat.type === 'dm' ? { receiver_id: chat.id } : { room_id: chat.id })
-    }
-
-    updateMessageCache(optimisticMsg)
 
     try {
       if (chat.type === 'group') {
@@ -158,7 +154,6 @@ export function useMessages(
       }
     } catch (err: any) {
       console.error('❌ Message Send Failed:', err)
-      // 실패 시 캐시에서 해당 임시 메시지 제거 (정교한 처리를 위해선 추가 로직 필요하지만 우선 에러 알림)
       toast.error(`전송 실패: ${err.message}`)
     }
   }
