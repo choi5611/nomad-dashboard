@@ -64,7 +64,6 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
   const { messages, loading, fetchNextPage, hasNextPage, isFetchingNextPage, handleSendMessage, handleLeaveChat } = useMessages(
     chat,
     user,
-    profile,
     scrollControlTemp.scrollToBottom
   )
 
@@ -157,7 +156,7 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
         onClose={() => setIsEditModalOpen(false)}
         user={user}
         initialData={roomData}
-        onSuccess={(_, name) => {
+        onSuccess={(_, name, __) => {
           chat.name = name
           setIsEditModalOpen(false)
           fetchRoomInfo()

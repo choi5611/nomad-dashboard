@@ -87,6 +87,13 @@ export default function ChatSidebar() {
     resetUnread('room', roomId)
   }
 
+  const handleRoomCreated = (roomId: string, roomName: string, isOpen: boolean) => {
+    // 채팅방 생성 후 FRIENDS 탭으로 이동
+    setActiveTab('friends')
+    setActiveChat({ type: isOpen ? 'open' : 'group', id: roomId, name: roomName })
+    resetUnread('room', roomId)
+  }
+
   return (
     <AnimatePresence>
       {isChatOpen && (
@@ -161,6 +168,7 @@ export default function ChatSidebar() {
                 user={user}
                 unreadState={unreadState}
                 onRoomClick={handleOpenRoomClick}
+                onRoomCreated={handleRoomCreated}
               />
             )}
           </div>

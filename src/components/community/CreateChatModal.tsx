@@ -10,7 +10,7 @@ interface CreateChatModalProps {
   isOpen: boolean
   onClose: () => void
   user: User | null
-  onSuccess: (roomId: string, roomName: string) => void
+  onSuccess: (roomId: string, roomName: string, isOpen?: boolean) => void
   initialData?: ChatRoom | null // 추가: 수정 모드용
 }
 
@@ -90,7 +90,7 @@ export default function CreateChatModal({ isOpen, onClose, user, onSuccess, init
 
         if (memberError) throw memberError
         toast.success("채팅방이 생성되었습니다!")
-        onSuccess(data.id, data.name)
+        onSuccess(data.id, data.name, data.is_open)
       }
       handleClose()
     } catch (err: any) {

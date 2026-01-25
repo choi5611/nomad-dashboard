@@ -11,9 +11,10 @@ interface OpenChatRoomListProps {
   user: User | null
   unreadState: { rooms: Record<string, number> }
   onRoomClick: (roomId: string, roomName: string) => void
+  onRoomCreated?: (roomId: string, roomName: string, isOpen: boolean) => void
 }
 
-export default function OpenChatRoomList({ user, unreadState, onRoomClick }: OpenChatRoomListProps) {
+export default function OpenChatRoomList({ user, unreadState, onRoomClick, onRoomCreated }: OpenChatRoomListProps) {
   const [rooms, setRooms] = useState<ChatRoom[]>([])
   const [joinedRoomIds, setJoinedRoomIds] = useState<Set<string>>(new Set()) // 추가: 참여 중인 방 ID들
   const [loading, setLoading] = useState(true)
@@ -173,8 +174,12 @@ export default function OpenChatRoomList({ user, unreadState, onRoomClick }: Ope
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         user={user}
-        onSuccess={(id, name) => {
-          onRoomClick(id, name)
+        onSuccess={(id, name, isOpen) => {
+          if (onRoomCreated) {
+            onRoomCreated(id, name, isOpen ?? true)
+          } else {
+            onRoomClick(id, name)
+          }
           fetchRooms()
         }}
       />

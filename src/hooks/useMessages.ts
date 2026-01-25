@@ -1,92 +1,62 @@
-import { useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useStore } from "@/store/useStore"
-import { useQueryClient } from "@tanstack/react-query"
 import { useInfiniteMessages } from "./useInfiniteMessages"
-import type { DMMessage, ChatInfo } from "@/types/message"
+import type { ChatInfo } from "@/types/message"
 import type { User } from "@supabase/supabase-js"
-import type { Profile } from "@/types/profile"
 
 export function useMessages(
   chat: ChatInfo,
   user: User | null,
-  profile: Profile | null,
+  // profile 매개변수 제거 (안 씀)
   scrollToBottom: () => void
 ) {
   const queryClient = useQueryClient()
-  const queryKey = ["messages", chat.type, chat.id]
-
+  // 실시간으로 들어오는 메시지를 담는 버퍼 (캐시와 별개로 관리)
+  const [realtimeBuffer, setRealtimeBuffer] = useState<any[]>([])
+  
+  // 1. 기존 메시지 데이터 로드
   const {
     data,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    isLoading
-  } = useInfiniteMessages(chat, user?.id)
+    isLoading,
+    membershipData
+  } = useInfiniteMessages(chat, user?.id) as any
 
-  // 1. 모든 페이지의 메시지를 하나의 배열로 펼침 (최신 페이지가 0번 인덱스이므로 역순 처리 개념 주의)
-  const rawMessages = data?.pages.flatMap(page => page.messages) || []
-
-  // 2. 중복 제거 (Map 사용, ID 기준)
-  const uniqueMessagesMap = new Map()
-  rawMessages.forEach((msg) => {
-    uniqueMessagesMap.set(msg.id, msg)
-  })
-
-  // 3. 시간순 정렬 (오래된 것 -> 최신 것)
-  const messages = Array.from(uniqueMessagesMap.values()).sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  )
-
-  // 캐시 업데이트 헬퍼 함수
-  const updateMessageCache = (newMessage: DMMessage) => {
-    queryClient.setQueryData(queryKey, (oldData: any) => {
-      // 기존 데이터가 아예 없으면 (첫 메시지인 경우 등) 새 페이지 구조 생성
-      if (!oldData || !oldData.pages || oldData.pages.length === 0) {
-        return {
-          pages: [{ messages: [newMessage], totalCount: 1 }],
-          pageParams: [0]
-        }
-      }
-      
-      // 이미 존재하는 메시지인지 확인 (중복 방지 - ID 기준)
-      const messageExists = oldData.pages.some((page: any) => 
-        page.messages.some((m: any) => m.id === newMessage.id)
-      )
-      if (messageExists) return oldData
-
-      // 기존 데이터 보존하면서 최신 페이지(첫 번째 페이지)의 맨 앞에 새 메시지 추가
-      // (React Query의 infinite query 데이터 구조 유지)
-      const newPages = [...oldData.pages]
-      newPages[0] = {
-        ...newPages[0],
-        messages: [newMessage, ...newPages[0].messages],
-        totalCount: (newPages[0].totalCount || 0) + 1
-      }
-      
-      return { ...oldData, pages: newPages }
-    })
+  // 2. [핵심] 히스토리와 실시간 메시지를 하나로 합치고 정렬
+  const messages = useMemo(() => {
+    // React Query에서 가져온 과거 데이터
+    const history = data?.pages.flatMap((page: any) => page.messages) || []
     
-    // 메시지 수신 시 스크롤 이동
-    setTimeout(scrollToBottom, 50)
-  }
+    // 과거 데이터 + 실시간 버퍼 합치기
+    const combined = [...history, ...realtimeBuffer]
+    
+    // 중복 제거 (DB에서 새로 불러온 데이터와 버퍼의 데이터가 겹칠 수 있음)
+    const uniqueMap = new Map()
+    combined.forEach(m => uniqueMap.set(m.id, m))
+    
+    // 전체를 시간순으로 정렬 (오래된 것 -> 최신 것)
+    return Array.from(uniqueMap.values()).sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
+  }, [data, realtimeBuffer])
 
-  // 실시간 구독 (모든 메시지의 유일한 진실의 원천)
+  // 3. 실시간 구독
   useEffect(() => {
-    if (!user) return
-
-    // 입장 시 unread 리셋
-    const { resetUnread } = useStore.getState()
-    resetUnread(chat.type === 'dm' ? 'dm' : 'room', chat.id)
+    if (!user || !membershipData) return
 
     const tableName = chat.type === 'group' ? 'group_messages' : 'direct_messages'
-    const filterConfig = chat.type === 'dm'
-      ? `receiver_id=eq.${user.id}`
-      : `room_id=eq.${chat.id}`
+    // 필터 제거: RLS 정책과 충돌 방지를 위해 모든 이벤트를 수신하고 내부에서 거름
+    const filterConfig = undefined 
+
+    console.log(`[Chat-Flow] Subscribing to ${chat.name}... (Filter: ${filterConfig})`);
 
     const channel = supabase
-      .channel(`chat:${chat.id}:${Date.now()}`)
+      .channel(`chat:${chat.id}:${Date.now()}`) // 매번 새로운 고유 채널 생성
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -96,64 +66,88 @@ export function useMessages(
         const newMessage = payload.new as any
         const senderId = newMessage.sender_id || newMessage.user_id
 
-        // sender 정보 가져오기
-        if (!newMessage.sender) {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('username, avatar_url, country_code')
-            .eq('id', senderId)
-            .single()
-          if (profileData) newMessage.sender = profileData
+        // 1. 방 ID 체크 (다른 방 메시지 무시)
+        if (newMessage.room_id && newMessage.room_id !== chat.id) return
+
+        // 2. DM 보안 필터링
+        if (chat.type === 'dm') {
+          const isMyDM = (newMessage.sender_id === user.id && newMessage.receiver_id === chat.id) ||
+                         (newMessage.sender_id === chat.id && newMessage.receiver_id === user.id);
+          if (!isMyDM) return;
         }
 
-        // 1. 캐시 업데이트 (내가 보낸 거든 남이 보낸 거든 똑같이 처리)
-        updateMessageCache(newMessage)
+        console.log(`[Chat-Flow] New Message Signal Received`);
+
+        if (!newMessage.sender) {
+          const { data: p } = await supabase.from('profiles').select('username, avatar_url, country_code').eq('id', senderId).single()
+          if (p) newMessage.sender = p
+        }
+
+        // 실시간 버퍼 업데이트
+        setRealtimeBuffer(prev => {
+            if (prev.some(msg => msg.id === newMessage.id)) return prev
+            return [...prev, newMessage]
+        })
         
-        // 2. 남이 보낸 메시지면 알림 리셋
         if (senderId !== user.id) {
           useStore.getState().resetUnread(chat.type === 'dm' ? 'dm' : 'room', chat.id)
         }
+        
+        // 캐시도 같이 갱신하여 데이터 정합성 유지
+        queryClient.invalidateQueries({ queryKey: ["messages", chat.type, chat.id] })
+        
+        // 스크롤 이동
+        setTimeout(() => {
+            if (typeof scrollToBottom === 'function') {
+                scrollToBottom()
+            }
+        }, 100)
       })
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
+      .subscribe((status) => {
+          // 객체 자체를 찍으면 브라우저 콘솔에서 [object Object]로 보일 수 있으므로 문자열로 찍기
+          console.log(`[Chat-Flow] Subscription Status (${chat.name}):`, status);
+      })
+    
+    return () => { 
+        console.log(`[Chat-Flow] Unsubscribing from ${chat.name}`);
+        supabase.removeChannel(channel);
     }
-  }, [user, chat.id, chat.type])
+  }, [user, chat.id, chat.type, membershipData?.joinedAt]) // 가입 정보가 바뀌면(방장 권한 획득 등) 재구독 하는 것이 안전함
 
-  // 메시지 전송 (낙관적 업데이트 제거 -> 서버 응답 대기)
+  // 방을 바꿀 때마다 실시간 버퍼 초기화
+  useEffect(() => {
+    setRealtimeBuffer([])
+  }, [chat.id])
+
+  // 메시지 전송 로직
   const handleSendMessage = async (content: string, anonNickname: string) => {
     if (!user || !content.trim()) return
-
-    const isAnon = chat.type === 'open'
+    console.log(`[Chat-Flow] Sending:`, content);
 
     try {
       if (chat.type === 'group') {
-        const { error } = await supabase.from('group_messages').insert({
-          room_id: chat.id,
-          user_id: user.id,
-          content
-        })
+        const { error } = await supabase.from('group_messages').insert({ room_id: chat.id, user_id: user.id, content })
         if (error) throw error
       } else {
         const insertData: any = {
           sender_id: user.id,
           content,
-          is_anonymous: isAnon,
-          nickname: isAnon ? anonNickname : null
+          is_anonymous: chat.type === 'open',
+          nickname: chat.type === 'open' ? anonNickname : null
         }
-
-        if (chat.type === 'dm') {
-          insertData.receiver_id = chat.id
-        } else {
-          insertData.room_id = chat.id
-        }
-
+        if (chat.type === 'dm') insertData.receiver_id = chat.id
+        else insertData.room_id = chat.id
+        
         const { error } = await supabase.from('direct_messages').insert(insertData)
         if (error) throw error
       }
+      console.log(`[Chat-Flow] Send Success.`);
+      
+      // [핵심] 전송 직후 캐시 강제 무효화 -> 내가 보낸 메시지 즉시 로드
+      await queryClient.invalidateQueries({ queryKey: ["messages", chat.type, chat.id] })
+      
     } catch (err: any) {
-      console.error('❌ Message Send Failed:', err)
+      console.error(`[Chat-Flow] Send Failed:`, err);
       toast.error(`전송 실패: ${err.message}`)
     }
   }
@@ -162,36 +156,6 @@ export function useMessages(
     if (!chat.id || !user) return
 
     try {
-      // 1. 멤버십 정보 조회
-      const { data: memberData, error: fetchError } = await supabase
-        .from('room_members')
-        .select('*')
-        .eq('room_id', chat.id)
-        .eq('user_id', user.id)
-        .maybeSingle()
-
-      if (fetchError) throw fetchError
-
-      if (!memberData) {
-        toast.error("멤버 정보를 찾을 수 없습니다.")
-        onBack()
-        return
-      }
-
-      // 시스템 메시지 (오픈채팅은 익명이라 선택 사항이지만, 그룹은 필수)
-      if (chat.type === 'group') {
-        try {
-          await supabase.from('group_messages').insert({
-            room_id: chat.id,
-            user_id: user.id,
-            content: `[SYSTEM] ${profile?.username || 'Unknown'}님이 나갔습니다.`
-          })
-        } catch (msgErr) {
-          console.error('Failed to send leave message', msgErr)
-        }
-      }
-
-      // 2. 멤버십 삭제 (완전 나가기)
       const { error: deleteError } = await supabase
         .from('room_members')
         .delete()
@@ -201,13 +165,9 @@ export function useMessages(
       if (deleteError) throw deleteError
 
       toast.success(chat.type === 'open' ? "라운지에서 퇴장했습니다." : "그룹에서 퇴장했습니다.")
-      
-      // 3. 전역 상태 갱신 및 뒤로 가기
-      const { fetchJoinedRooms } = useStore.getState()
-      fetchJoinedRooms(user.id)
+      useStore.getState().fetchJoinedRooms(user.id)
       onBack()
     } catch (err: any) {
-      console.error('❌ Leave Chat Error:', err)
       toast.error("오류 발생: " + err.message)
     }
   }
