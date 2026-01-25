@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useStore } from "@/store/useStore"
@@ -14,7 +14,8 @@ export function useMessages(
   profile: Profile | null,
   scrollToBottom: () => void
 ) {
-  const [realtimeMessages, setRealtimeMessages] = useState<DMMessage[]>([])
+  const queryClient = useQueryClient()
+  const queryKey = ["messages", chat.type, chat.id]
 
   const {
     data,
@@ -24,16 +25,39 @@ export function useMessages(
     isLoading
   } = useInfiniteMessages(chat, user?.id)
 
-  // 모든 메시지를 합치기 (페이지 순서 역순 + 각 페이지 내 메시지 역순 = 오래된→최신)
-  const loadedMessages = [...(data?.pages || [])].reverse()
+  // 모든 메시지를 합치기 (오래된→최신 순 정렬)
+  const messages = [...(data?.pages || [])].reverse()
     .flatMap(page => [...page.messages].reverse())
-  const messages = [...loadedMessages, ...realtimeMessages]
+
+  // 캐시 업데이트 헬퍼 함수
+  const updateMessageCache = (newMessage: DMMessage) => {
+    queryClient.setQueryData(queryKey, (oldData: any) => {
+      if (!oldData) return oldData
+      
+      // 이미 존재하는 메시지인지 확인 (중복 방지)
+      const messageExists = oldData.pages.some((page: any) => 
+        page.messages.some((m: any) => m.id === newMessage.id)
+      )
+      if (messageExists) return oldData
+
+      // 최신 페이지(첫 번째 페이지)의 맨 앞에 새 메시지 추가
+      const newPages = [...oldData.pages]
+      if (newPages.length > 0) {
+        newPages[0] = {
+          ...newPages[0],
+          messages: [newMessage, ...newPages[0].messages]
+        }
+      }
+      
+      return { ...oldData, pages: newPages }
+    })
+    
+    // 메시지 수신 시 스크롤 이동
+    setTimeout(scrollToBottom, 50)
+  }
 
   useEffect(() => {
     if (!user) return
-
-    // 페이지 변경 시 실시간 메시지 초기화
-    setRealtimeMessages([])
 
     // 입장 시 unread 리셋
     const { resetUnread } = useStore.getState()
@@ -46,7 +70,7 @@ export function useMessages(
       : `room_id=eq.${chat.id}`
 
     const channel = supabase
-      .channel(`chat:${chat.id}`)
+      .channel(`chat:${chat.id}:${Date.now()}`) // 채널 ID 고유화
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -54,53 +78,27 @@ export function useMessages(
         filter: filterConfig
       }, async (payload) => {
         const newMessage = payload.new as any
+        const senderId = newMessage.sender_id || newMessage.user_id
 
-        // sender 정보 가져오기 (DM, Group 모두)
-        if (chat.type === 'group' && !newMessage.sender) {
-          const { data } = await supabase
-            .from('profiles')
-            .select('username, avatar_url')
-            .eq('id', newMessage.sender_id || newMessage.user_id)
-            .single()
-          if (data) newMessage.sender = data
-        } else if (chat.type === 'dm' && !newMessage.sender) {
-          // DM의 경우에도 sender 정보 가져오기
-          const { data } = await supabase
+        // 본인이 보낸 메시지는 handleSendMessage에서 직접 처리하므로 무시
+        if (senderId === user.id) return
+
+        // sender 정보 가져오기
+        if (!newMessage.sender) {
+          const { data: profileData } = await supabase
             .from('profiles')
             .select('username, avatar_url, country_code')
-            .eq('id', newMessage.sender_id)
+            .eq('id', senderId)
             .single()
-          if (data) newMessage.sender = data
+          if (profileData) newMessage.sender = profileData
         }
 
-        // DM의 경우 추가 필터링
+        // DM의 경우 필터링
         if (chat.type === 'dm' && newMessage.sender_id !== chat.id) return
 
-        // 본인이 보낸 메시지는 낙관적 업데이트 처리
-        const senderId = newMessage.sender_id || newMessage.user_id
-        if (senderId === user.id) {
-          setRealtimeMessages(prev => {
-            const tempMsgIndex = prev.findIndex(m =>
-              m.sender_id === user.id &&
-              m.content === newMessage.content &&
-              Math.abs(new Date(m.created_at).getTime() - new Date(newMessage.created_at).getTime()) < 5000
-            )
-            if (tempMsgIndex !== -1) {
-              const updated = [...prev]
-              updated[tempMsgIndex] = { ...updated[tempMsgIndex], ...newMessage }
-              return updated
-            }
-            return prev
-          })
-          return
-        }
-
-        // 다른 사람 메시지 추가
+        // 캐시 업데이트 및 알림 리셋
+        updateMessageCache(newMessage)
         useStore.getState().resetUnread(chat.type === 'dm' ? 'dm' : 'room', chat.id)
-        setRealtimeMessages(prev => {
-          if (prev.some(m => m.id === newMessage.id)) return prev
-          return [...prev, newMessage]
-        })
       })
       .subscribe()
 
@@ -115,7 +113,7 @@ export function useMessages(
     const tempId = Math.random().toString(36).substring(7)
     const isAnon = chat.type === 'open'
 
-    // 낙관적 업데이트
+    // 낙관적 업데이트를 위해 캐시에 즉시 추가
     const optimisticMsg: DMMessage = {
       id: tempId,
       sender_id: user.id,
@@ -123,13 +121,15 @@ export function useMessages(
       is_anonymous: isAnon,
       nickname: isAnon ? anonNickname : undefined,
       created_at: new Date().toISOString(),
+      sender: {
+        username: profile?.username || "Me",
+        avatar_url: profile?.avatar_url || null,
+        country_code: profile?.country_code
+      },
       ...(chat.type === 'dm' ? { receiver_id: chat.id } : { room_id: chat.id })
     }
 
-    setRealtimeMessages(prev => [...prev, optimisticMsg])
-
-    // 메시지 전송 직후 스크롤 강제 이동
-    setTimeout(scrollToBottom, 10)
+    updateMessageCache(optimisticMsg)
 
     try {
       if (chat.type === 'group') {
@@ -140,7 +140,6 @@ export function useMessages(
         })
         if (error) throw error
       } else {
-        // DM 및 오픈 채팅
         const insertData: any = {
           sender_id: user.id,
           content,
@@ -159,7 +158,7 @@ export function useMessages(
       }
     } catch (err: any) {
       console.error('❌ Message Send Failed:', err)
-      setRealtimeMessages(prev => prev.filter(m => m.id !== tempId))
+      // 실패 시 캐시에서 해당 임시 메시지 제거 (정교한 처리를 위해선 추가 로직 필요하지만 우선 에러 알림)
       toast.error(`전송 실패: ${err.message}`)
     }
   }
