@@ -63,9 +63,7 @@ interface GlobeProps {
 export default function Globe({ onSelectPin }: GlobeProps) {
   const groupRef = useRef<THREE.Group>(null)
   const setSelectedCity = useStore((state) => state.setSelectedCity)
-  const isAutoRotating = useStore((state) => state.isAutoRotating)
   const cities = useStore((state) => state.cities)
-  const discoveredCity = useStore((state) => state.discoveredCity)
   const [cameraDistance, setCameraDistance] = useState(20)
 
   // 텍스처 로드
@@ -77,12 +75,13 @@ export default function Globe({ onSelectPin }: GlobeProps) {
 
   // 현재 줌 레벨에 따라 보여줄 핀 필터링
   const visibleCities = useMemo(() => {
+    // 줌 거리에 상관없이 '스팟(priority 3)' 단위의 작은 도시는 핀을 표시하지 않음
+    // 사용자 요청: 작은 도시들이 너무 많아지는 것을 방지하고 검색을 통해서만 진입하게 함
     if (cameraDistance > 25) {
       return cities.filter(c => (c.priority || 3) === 1)
-    } else if (cameraDistance > 15) {
-      return cities.filter(c => (c.priority || 3) <= 2)
     }
-    return cities
+    // 최대 줌에서도 priority 2(주요 도시)까지만 표시
+    return cities.filter(c => (c.priority || 3) <= 2)
   }, [cameraDistance, cities])
 
   useFrame(({ camera }) => {
@@ -170,16 +169,7 @@ export default function Globe({ onSelectPin }: GlobeProps) {
         />
       ))}
 
-      {/* 발견된 새 도시 핀 */}
-      {discoveredCity && (
-        <Pin
-          lat={discoveredCity.lat}
-          lng={discoveredCity.lng}
-          label={`🚀 ${discoveredCity.name}`}
-          occludeRef={globeRef}
-          onSelect={(pos) => handlePinClick(discoveredCity, pos)}
-        />
-      )}
+
     </group>
   )
 }
