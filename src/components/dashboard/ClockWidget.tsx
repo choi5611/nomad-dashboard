@@ -22,15 +22,15 @@ export default function ClockWidget({ timezone }: ClockWidgetProps) {
     <GlassCard className="w-48">
       <CardHeader className="p-3 pb-1">
         <CardTitle className="text-sm font-medium text-blue-200 flex items-center gap-2">
-          <Clock className="w-4 h-4" /> Local Time
+          <Clock className="w-4 h-4" /> <span>Local Time</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="p-3 pt-1">
         <div className="text-2xl font-bold font-mono">
-          {format(zonedTime, "HH:mm")}
+          <span>{format(zonedTime, "HH:mm")}</span>
         </div>
         <div className="text-xs text-white/60">
-          {format(zonedTime, "yyyy-MM-dd")} ({timezone.split('/')[1]})
+          <span>{format(zonedTime, "yyyy-MM-dd")} ({timezone.split('/')[1]})</span>
         </div>
       </CardContent>
     </GlassCard>

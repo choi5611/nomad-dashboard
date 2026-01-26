@@ -30,7 +30,7 @@ export default function CommentItem({
       if (part.startsWith("#")) {
         return <span key={i} className="text-cyan-400 hover:underline cursor-pointer">{part}</span>
       }
-      return part
+      return <span key={i}>{part}</span>
     })
   }
 
@@ -57,11 +57,11 @@ export default function CommentItem({
 
         <div className="flex items-center gap-3 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <button type="button" onClick={onReply} className="flex items-center gap-1 text-xs text-white/40 hover:text-cyan-400">
-            <Reply className="w-3 h-3" /> 답글
+            <Reply className="w-3 h-3" /> <span>답글</span>
           </button>
           {isAuthor && (
             <button type="button" onClick={onDelete} className="flex items-center gap-1 text-xs text-white/40 hover:text-red-400">
-              <Trash2 className="w-3 h-3" /> 삭제
+              <Trash2 className="w-3 h-3" /> <span>삭제</span>
             </button>
           )}
         </div>

@@ -32,7 +32,7 @@ export default function PostActions({
         >
           <Heart className={`w-4 h-4 ${isLiked ? "fill-current" : ""}`} />
         </motion.div>
-        {likeCount}
+        <span>{likeCount}</span>
       </button>
       <button
         onClick={onToggleComments}
@@ -40,7 +40,7 @@ export default function PostActions({
           showComments ? "text-cyan-400" : "hover:text-cyan-400"
         }`}
       >
-        <MessageCircle className="w-4 h-4" /> {commentCount}
+        <MessageCircle className="w-4 h-4" /> <span>{commentCount}</span>
       </button>
     </div>
   )

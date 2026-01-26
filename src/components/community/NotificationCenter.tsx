@@ -195,10 +195,11 @@ export default function NotificationCenter() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-white/80 leading-snug">
-                          <span className="font-bold text-white">{n.sender_profile?.username || 'Somebody'}</span>님이
-                          {n.type === 'like' ? ' 게시글을 좋아합니다.' : 
-                           n.type === 'comment' ? ' 댓글을 남겼습니다.' : 
-                           ' 친구 요청을 보냈습니다.'}
+                          <span className="font-bold text-white">{n.sender_profile?.username || 'Somebody'}</span>
+                          <span>님이</span>
+                          {n.type === 'like' ? <span> 게시글을 좋아합니다.</span> : 
+                           n.type === 'comment' ? <span> 댓글을 남겼습니다.</span> : 
+                           <span> 친구 요청을 보냈습니다.</span>}
                         </p>
                         <p className="text-[10px] text-white/30 mt-1 font-mono">
                           {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ko })}

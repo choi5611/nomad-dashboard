@@ -137,7 +137,7 @@ export default function DashboardOverlay() {
         <div className="pointer-events-auto flex-1 basis-0 min-w-0 w-full md:w-auto">
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
             <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-600 drop-shadow-sm truncate">
-                {selectedCity ? selectedCity.name : "Nomad OS"}
+                <span>{selectedCity ? selectedCity.name : "Nomad OS"}</span>
             </h1>
             {user && selectedCity && (
                 hasVisited ? (
@@ -165,12 +165,12 @@ export default function DashboardOverlay() {
           </div>
           <div className="flex items-center gap-3 mt-0.5">
             <p className="text-blue-200/80 text-[10px] md:text-sm truncate uppercase tracking-widest font-mono">
-              {selectedCity ? `Global Command Center • ${selectedCity.countryCode}` : "Select a city to begin"}
+              <span>{selectedCity ? `Global Command Center • ${selectedCity.countryCode}` : "Select a city to begin"}</span>
             </p>
             <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/5 rounded-md border border-white/5">
               <div className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
               <span className="text-[9px] md:text-[10px] font-bold text-white/40 uppercase tracking-tighter">
-                {globalOnlineCount} nomads online
+                {globalOnlineCount} <span>nomads online</span>
               </span>
             </div>
           </div>

@@ -219,7 +219,7 @@ export default function CreateChatModal({ isOpen, onClose, user, onSuccess, init
             {/* Tags */}
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1 flex items-center gap-1">
-                <Hash className="w-3 h-3" /> Search Tags
+                <Hash className="w-3 h-3" /> <span>Search Tags</span>
               </label>
               <input
                 type="text"
@@ -266,9 +266,9 @@ export default function CreateChatModal({ isOpen, onClose, user, onSuccess, init
                 {isSubmitting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : isEditMode ? (
-                  <><Save className="w-4 h-4" /> Save Changes</>
+                  <><Save className="w-4 h-4" /> <span>Save Changes</span></>
                 ) : (
-                  "Initialize"
+                  <span>Initialize</span>
                 )}
               </button>
             </div>

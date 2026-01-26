@@ -86,7 +86,7 @@ export default function OpenChatRoomList({ user, unreadState, onRoomClick, onRoo
 
     try {
       // room_members에 추가 (이미 있으면 ignore)
-      const { error } = await supabase
+      await supabase
         .from('room_members')
         .insert({ room_id: roomId, user_id: user.id })
         .select()
@@ -112,7 +112,7 @@ export default function OpenChatRoomList({ user, unreadState, onRoomClick, onRoo
       <div className="p-4 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-[10px] font-bold text-amber-500 uppercase tracking-widest flex items-center gap-2">
-            <Sparkles className="w-3 h-3" /> Anonymous Lounges
+            <Sparkles className="w-3 h-3" /> <span>Anonymous Lounges</span>
           </h3>
           <button
             onClick={() => setIsModalOpen(true)}

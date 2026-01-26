@@ -57,35 +57,35 @@ export default function ExchangeRateWidget({ targetCurrency }: ExchangeRateWidge
     <GlassCard className="w-64 transition-all hover:bg-white/5">
       <CardHeader className="p-4 pb-2">
         <CardTitle className="text-sm font-medium text-blue-200 flex items-center gap-2">
-          <DollarSign className="w-4 h-4" /> Exchange Rate
+          <DollarSign className="w-4 h-4" /> <span>Exchange Rate</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="p-4 pt-2">
         {loading ? (
              <div className="flex items-center gap-2 text-white/50">
-               <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+               <Loader2 className="w-4 h-4 animate-spin" /> <span>Loading...</span>
              </div>
         ) : unsupported ? (
           <div>
             <div className="text-lg font-bold text-white/50">
-               {targetCurrency}
+               <span>{targetCurrency}</span>
             </div>
             <div className="text-xs text-yellow-400 mt-1 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" /> Not Available
+              <AlertCircle className="w-3 h-3" /> <span>Not Available</span>
             </div>
           </div>
         ) : (
           <div>
             <div className="text-lg font-bold">
-               1 {baseCurrency} = {rate ? rate.toLocaleString() : "-"} {targetCurrency}
+               <span>1 {baseCurrency} = {rate ? rate.toLocaleString() : "-"} {targetCurrency}</span>
             </div>
             {rate && targetCurrency !== "USD" && (
                 <div className="text-xs text-green-400 mt-1 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" /> Live Rate
+                  <TrendingUp className="w-3 h-3" /> <span>Live Rate</span>
                 </div>
             )}
             {targetCurrency === "USD" && (
-                 <div className="text-xs text-white/50 mt-1">Base Currency</div>
+                 <div className="text-xs text-white/50 mt-1"><span>Base Currency</span></div>
             )}
           </div>
         )}

@@ -1,7 +1,6 @@
-import { useState } from "react"
 import { useAuth } from "@/store/useAuth"
 import { useStore } from "@/store/useStore"
-import { Loader2, Heart, Users, MessageSquare, Pencil, Check, X, Sparkles } from "lucide-react"
+import { Loader2, Heart, Users, MessageSquare, Pencil, Check, Sparkles } from "lucide-react"
 import { motion } from "framer-motion"
 import { useFriends } from "@/hooks/useFriends"
 import { useChatRooms } from "@/hooks/useChatRooms"
@@ -83,7 +82,7 @@ function ChatRoomItem({
           ) : (
             <div className="flex items-center gap-2">
               <p className="text-sm font-bold text-white uppercase tracking-tighter truncate">
-                {room.custom_name || room.name}
+                <span>{room.custom_name || room.name}</span>
               </p>
               {canEdit && (
                 <button
@@ -100,7 +99,7 @@ function ChatRoomItem({
             </div>
           )}
           <p className="text-[10px] text-white/30 uppercase font-mono">
-            {isLounge ? 'Public Lounge' : 'Private Group'}
+            <span>{isLounge ? 'Public Lounge' : 'Private Group'}</span>
           </p>
         </div>
       </div>
@@ -160,7 +159,7 @@ export default function FriendsList() {
       {/* Header */}
       <div className="flex items-center justify-between px-1">
         <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
-          <Heart className="w-3 h-3" /> Nomads ({acceptedFriends.length})
+          <Heart className="w-3 h-3" /> <span>Nomads ({acceptedFriends.length})</span>
         </h3>
         {acceptedFriends.length > 0 && (
           <button
@@ -194,7 +193,7 @@ export default function FriendsList() {
           {chatRooms.filter(r => !r.is_open).length > 0 && (
             <section>
               <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <Users className="w-3.5 h-3.5" /> My Crews
+                <Users className="w-3.5 h-3.5" /> <span>My Crews</span>
               </h3>
               <div className="space-y-2">
                 {chatRooms.filter(r => !r.is_open).map(room => (
@@ -217,7 +216,7 @@ export default function FriendsList() {
           {chatRooms.filter(r => r.is_open).length > 0 && (
             <section>
               <h3 className="text-[10px] font-bold text-amber-500/60 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <Sparkles className="w-3.5 h-3.5" /> Joined Lounges
+                <Sparkles className="w-3.5 h-3.5" /> <span>Joined Lounges</span>
               </h3>
               <div className="space-y-2">
                 {chatRooms.filter(r => r.is_open).map(room => (
@@ -261,7 +260,7 @@ export default function FriendsList() {
       <section>
         {!isSelectionMode && (
           <h3 className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-3 flex items-center gap-2">
-            <MessageSquare className="w-3 h-3" /> Direct Messages
+            <MessageSquare className="w-3 h-3" /> <span>Direct Messages</span>
           </h3>
         )}
         <div className="space-y-2">

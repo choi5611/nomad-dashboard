@@ -40,7 +40,7 @@ export default function PostHeader({
             </span>
             <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">
               <TypeIcon className="w-3 h-3" />
-              {typeLabel}
+              <span>{typeLabel}</span>
             </span>
           </div>
           {isAuthor && (
