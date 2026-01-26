@@ -31,9 +31,10 @@ interface PostCardProps {
   typeLabel: string
   onDelete?: () => void
   onTagClick?: (tag: string) => void
+  disableProfileClick?: boolean
 }
 
-export default function PostCard({ post, typeIcon, typeLabel, onDelete, onTagClick }: PostCardProps) {
+export default function PostCard({ post, typeIcon, typeLabel, onDelete, onTagClick, disableProfileClick }: PostCardProps) {
   const user = useAuth((state) => state.user)
   const [showComments, setShowComments] = useState(false)
   const [commentCount, setCommentCount] = useState(post.comments_count || 0)
@@ -109,7 +110,7 @@ export default function PostCard({ post, typeIcon, typeLabel, onDelete, onTagCli
         isAuthor={isAuthor}
         typeIcon={typeIcon}
         typeLabel={typeLabel}
-        onProfileClick={() => setIsProfileOpen(true)}
+        onProfileClick={disableProfileClick ? undefined : () => setIsProfileOpen(true)}
         onDelete={() => setIsDeleteModalOpen(true)}
       />
 
@@ -155,11 +156,13 @@ export default function PostCard({ post, typeIcon, typeLabel, onDelete, onTagCli
       />
 
       {/* User Profile Modal */}
-      <UserProfileModal
-        userId={post.author_id}
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-      />
+      {!disableProfileClick && (
+        <UserProfileModal
+          userId={post.author_id}
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+        />
+      )}
     </div>
   )
 }

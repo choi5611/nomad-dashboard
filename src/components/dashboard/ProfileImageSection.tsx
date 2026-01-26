@@ -56,7 +56,7 @@ export default function ProfileImageSection({
           <Award className="w-4 h-4 text-cyan-400" />
           <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.2em] opacity-60">Certified Medals</h3>
         </div>
-        <MedalCollection />
+        <MedalCollection userId={userId} />
       </div>
     </div>
   )

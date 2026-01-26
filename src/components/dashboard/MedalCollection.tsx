@@ -1,17 +1,19 @@
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
-import { useAuth } from "@/store/useAuth"
 import { Loader2, Award } from "lucide-react"
 import { motion } from "framer-motion"
 
-export default function MedalCollection() {
-  const { user } = useAuth()
+interface MedalCollectionProps {
+  userId: string
+}
+
+export default function MedalCollection({ userId }: MedalCollectionProps) {
   const [visits, setVisits] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetchVisits = async () => {
-      if (!user) {
+      if (!userId) {
         setLoading(false)
         return
       }
@@ -19,7 +21,8 @@ export default function MedalCollection() {
       const { data, error } = await supabase
         .from('visits')
         .select('*')
-        .order('visited_at', { ascending: false })
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
       
       if (!error) {
         setVisits(data || [])
@@ -28,7 +31,7 @@ export default function MedalCollection() {
     }
 
     fetchVisits()
-  }, [user])
+  }, [userId])
 
   if (loading) {
     return (
@@ -93,7 +96,7 @@ export default function MedalCollection() {
                    Base: {visit.city_id.toUpperCase()}
                  </p>
                  <p className="text-[9px] text-white/40 font-mono mt-1">
-                   Lat-Trace: {new Date(visit.visited_at).toLocaleDateString()}
+                   Lat-Trace: {visit.created_at ? new Date(visit.created_at).toLocaleDateString() : 'Unknown Date'}
                  </p>
               </div>
               {/* Tooltip Arrow */}

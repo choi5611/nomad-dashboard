@@ -7,7 +7,7 @@ interface PostHeaderProps {
   isAuthor: boolean
   typeIcon: any
   typeLabel: string
-  onProfileClick: () => void
+  onProfileClick?: () => void
   onDelete: () => void
 }
 
@@ -26,15 +26,15 @@ export default function PostHeader({
       <img
         src={avatarUrl}
         alt={authorName}
-        className="w-10 h-10 rounded-full bg-slate-700 cursor-pointer hover:ring-2 hover:ring-cyan-500/50 transition-all"
-        onClick={onProfileClick}
+        className={`w-10 h-10 rounded-full bg-slate-700 transition-all ${onProfileClick ? 'cursor-pointer hover:ring-2 hover:ring-cyan-500/50' : 'cursor-default'}`}
+        onClick={() => onProfileClick?.()}
       />
       <div className="flex-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span
-              className="font-medium text-white cursor-pointer hover:text-cyan-400 transition-colors"
-              onClick={onProfileClick}
+              className={`font-medium text-white transition-colors ${onProfileClick ? 'cursor-pointer hover:text-cyan-400' : 'cursor-default'}`}
+              onClick={() => onProfileClick?.()}
             >
               {authorName}
             </span>

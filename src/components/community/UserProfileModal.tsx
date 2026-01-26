@@ -7,6 +7,7 @@ import { useStore } from "@/store/useStore"
 import { toast } from "sonner"
 import { getNomadRank } from "@/utils/rankUtils"
 import TravelLog from "./TravelLog"
+import MedalCollection from "../dashboard/MedalCollection"
 import { useInfinitePosts } from "@/hooks/useInfinitePosts"
 import PostCard from "./PostCard"
 
@@ -247,6 +248,14 @@ export default function UserProfileModal({ userId, isOpen, onClose }: UserProfil
                                             <p className="text-sm font-bold text-white mt-1">{new Date(profile?.created_at).toLocaleDateString()}</p>
                                         </div>
                                     </div>
+
+                                    <div className="pt-2">
+                                        <div className="flex items-center gap-2 mb-4 px-1">
+                                            <Award className="w-4 h-4 text-cyan-400" />
+                                            <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.2em] opacity-60">Earned Medals</h3>
+                                        </div>
+                                        <MedalCollection userId={userId} />
+                                    </div>
                                 </motion.div>
                             )}
 
@@ -366,6 +375,7 @@ function ActivityWrapper({ userId }: { userId: string }) {
                 post={post} 
                 typeIcon={MapPin} 
                 typeLabel="LOG" 
+                disableProfileClick={true}
              />
           </div>
         ))}

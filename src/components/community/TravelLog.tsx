@@ -22,6 +22,7 @@ export default function TravelLog({ userId, compact = false }: TravelLogProps) {
           .eq('user_id', userId)
 
         if (!visitError && visitData) {
+          console.log("[TravelLog-Debug] visitData from DB:", visitData);
           const { data: cityData } = await supabase.from('cities').select('name, display_name, country_code')
           
           const enrichedVisits = visitData.map(v => ({
@@ -83,7 +84,9 @@ export default function TravelLog({ userId, compact = false }: TravelLogProps) {
                     <span>{visit.city?.display_name || 'Unknown City'}</span>
                   </h4>
                   <span className="text-[10px] text-white/20 font-mono shrink-0">
-                    {new Date(visit.created_at).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\. /g, '.')}
+                    {visit.created_at 
+                      ? new Date(visit.created_at).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\. /g, '.')
+                      : 'Unknown Date'}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-1 text-[10px] text-white/40 uppercase font-bold tracking-tighter">
