@@ -23,6 +23,13 @@ export function useProfileUpdate(user: User | null, profile: Profile | null, fet
       return false
     }
 
+    // 닉네임 규칙: 2~15자, 한글/영문/숫자/밑줄(_)만 허용
+    const nicknameRegex = /^[a-zA-Z0-9가-힣_]{2,15}$/
+    if (!nicknameRegex.test(username.trim())) {
+      toast.error("닉네임은 2~15자의 한글, 영문, 숫자, _ 만 가능합니다.")
+      return false
+    }
+
     setLoading(true)
     try {
       // 30일 제한 체크

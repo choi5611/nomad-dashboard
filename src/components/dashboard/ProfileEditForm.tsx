@@ -28,9 +28,10 @@ export default function ProfileEditForm({
         <label className="text-sm font-medium text-white/60 ml-1">닉네임</label>
         <input
           type="text"
+          maxLength={15}
           value={username}
           onChange={(e) => onUsernameChange(e.target.value)}
-          placeholder="새로운 닉네임"
+          placeholder="새로운 닉네임 (2~15자, 한글/영문/숫자/_)"
           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-all font-medium"
         />
       </div>
