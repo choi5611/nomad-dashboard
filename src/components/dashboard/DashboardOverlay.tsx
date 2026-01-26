@@ -125,7 +125,11 @@ export default function DashboardOverlay() {
 
   const globalOnlineCount = useGlobalPresence()
 
+  // 임시 테스트용: 모든 도시에서 방문 인증이 가능하도록 국가 코드 체크 해제
+  // 실제 서비스 시에는: 
+  // profile?.country_code === selectedCity?.countryCode 로 복구 필요
   const canVerifyLocation = profile?.country_code === selectedCity?.countryCode
+  // const canVerifyLocation = !!selectedCity
 
   return (
     <div className={`absolute inset-0 z-10 pointer-events-none p-4 md:p-6 flex flex-col justify-between ${isMobile ? 'pt-12 pb-[80px]' : ''}`}>

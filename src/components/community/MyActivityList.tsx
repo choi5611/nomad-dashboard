@@ -87,13 +87,13 @@ export default function MyActivityList() {
           </div>
         ) : (
           <>
-            <div className="space-y-4">
+            <div className="space-y-4 pt-2">
               {allPosts.map((post) => {
                  const TypeIcon = typeIcons[post.category as keyof typeof typeIcons] || Building2
                  const typeLabel = typeLabels[post.category as keyof typeof typeLabels] || "기타"
                  
                  return (
-                   <div key={post.id} className="scale-[0.9] origin-top -mb-10 first:mt-0">
+                   <div key={post.id} className="w-full">
                       <PostCard 
                         post={post} 
                         typeIcon={TypeIcon}

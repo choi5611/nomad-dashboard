@@ -9,6 +9,7 @@ import ProfileImageSection from "./ProfileImageSection"
 import AvatarCropModal from "./AvatarCropModal"
 import ProfileEditForm from "./ProfileEditForm"
 import MyActivityList from "@/components/community/MyActivityList"
+import TravelLog from "@/components/community/TravelLog"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 
 export default function SettingsSidebar() {
@@ -128,6 +129,11 @@ export default function SettingsSidebar() {
                     onFileChange={handleFileChange}
                     uploading={uploading}
                   />
+
+                  {/* Travel Summary */}
+                  <div className="pt-2">
+                    <TravelLog userId={user.id} />
+                  </div>
 
                   {/* Cropper Modal */}
                   {imageSrc && (
