@@ -7,6 +7,8 @@ import { toast } from "sonner"
 import { v4 as uuidv4 } from 'uuid'
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 
+import { compressImage } from "@/utils/media"
+
 interface WritePostFormProps {
   onClose: () => void;
   onPostCreate: () => void;
@@ -51,17 +53,27 @@ export default function WritePostForm({ onClose, onPostCreate, tabs }: WritePost
 
   const uploadImages = async () => {
     const uploadPromises = images.map(async (file) => {
-      const fileExt = file.name.split('.').pop()
+      const isVideo = file.type.startsWith('video/')
+      let finalFile = file
+
+      // 이미지일 경우에만 압축 진행
+      if (!isVideo) {
+        try {
+          finalFile = await compressImage(file, { maxWidth: 1200, quality: 0.7 })
+        } catch (err) {
+          console.error("Compression failed, using original file:", err)
+        }
+      }
+
+      const fileExt = finalFile.name.split('.').pop()
       const fileName = `${uuidv4()}.${fileExt}`
       const filePath = `${user?.id}/${fileName}`
 
-      // 비디오인지 확인
-      const isVideo = file.type.startsWith('video/')
       const bucketName = isVideo ? 'post-videos' : 'post-images'
 
       const { error: uploadError } = await supabase.storage
         .from(bucketName)
-        .upload(filePath, file)
+        .upload(filePath, finalFile)
 
       if (uploadError) throw uploadError
 

@@ -34,14 +34,14 @@ export function useAvatarCrop(user: User | null, fetchProfile: (userId: string) 
       const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels)
       if (!croppedImageBlob) throw new Error("이미지 크롭 실패")
 
-      const fileName = `${user.id}/${uuidv4()}.jpg`
+      const fileName = `${user.id}/${uuidv4()}.webp`
       const filePath = fileName
 
       // Storage 업로드
       const { error: uploadError } = await supabase.storage
         .from("avatars")
         .upload(filePath, croppedImageBlob, {
-          contentType: "image/jpeg",
+          contentType: "image/webp",
           upsert: true,
         })
 

@@ -6,6 +6,7 @@ import { useInView } from "react-intersection-observer"
 import { useInfinitePosts } from "@/hooks/useInfinitePosts"
 import PostCard from "./PostCard"
 import WritePostForm from "./WritePostForm"
+import UserSearchList from "./UserSearchList"
 import { useQueryClient } from "@tanstack/react-query"
 
 const typeIcons = {
@@ -26,6 +27,7 @@ const TABS = [
   { id: "experience", label: "경험담" },
   { id: "restaurant", label: "맛집" },
   { id: "tip", label: "팁" },
+  { id: "users", label: "노마드" },
 ]
 
 const POPULAR_TAGS = ["맛집", "디지털노마드", "카페", "태국", "한달살기", "작업공간"]
@@ -175,9 +177,11 @@ export default function CommunitySidebar() {
         </div>
       )}
 
-      {/* Posts */}
+      {/* Content Area */}
       <div className="overflow-y-auto h-[calc(100%-120px)] p-4 space-y-4 no-scrollbar">
-        {status === 'pending' ? (
+        {activeTab === "users" ? (
+          <UserSearchList searchQuery={searchQuery} />
+        ) : status === 'pending' ? (
           <div className="flex flex-col items-center justify-center h-40 text-white/30 gap-3">
             <Loader2 className="w-8 h-8 animate-spin" />
             <p className="text-sm">게시글을 불러오는 중...</p>
