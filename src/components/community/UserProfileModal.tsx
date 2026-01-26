@@ -303,14 +303,20 @@ export default function UserProfileModal({ userId, isOpen, onClose }: UserProfil
                       {friendStatus === 'accepted' && (
                           <button
                               onClick={() => {
-                                  const { setActiveChat, toggleChat } = (useStore as any).getState()
+                                  const { setActiveChat, closeSettings, openSidebar } = (useStore as any).getState()
+                                  
+                                  // 1. 대화 상대 지정
                                   setActiveChat({
                                       type: 'dm',
                                       id: userId,
                                       name: profile.username,
                                       avatar_url: profile.avatar_url
                                   })
-                                  toggleChat()
+                                  
+                                  // 2. 채팅창 열기 및 다른 창 정리
+                                  // (Zustand의 set을 직접 호출하거나 정의된 함수들을 조합)
+                                  useStore.setState({ isChatOpen: true, isSettingsOpen: false, isSidebarOpen: true, activeTab: 'friends' })
+                                  
                                   onClose()
                               }}
                               className="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-bold rounded-2xl shadow-lg flex items-center justify-center gap-2 transition-all uppercase text-sm tracking-tighter"

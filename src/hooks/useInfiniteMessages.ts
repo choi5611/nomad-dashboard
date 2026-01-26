@@ -15,10 +15,15 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
     queryFn: async () => {
       if (!userId || !chat.id) return null
 
+      // [핵심 수정] DM인 경우 방 정보 상시 조회를 하지 않음 (406 에러 방지)
+      if (chat.type === 'dm') {
+        return { isCreator: false, joinedAt: new Date(0).toISOString(), memberInfo: null }
+      }
+
       console.group(`[CMS-Debug] Membership Check for Room: ${chat.name} (${chat.id})`);
       // 방 정보(생성자, 공개 여부)와 멤버십 정보 병렬 조회
       const [roomResult, memberResult] = await Promise.all([
-        supabase.from('chat_rooms').select('created_by, is_open').eq('id', chat.id).single(),
+        supabase.from('chat_rooms').select('created_by, is_open').eq('id', chat.id).maybeSingle(), // single() 대신 maybeSingle()로 안전하게 조회
         supabase.from('room_members').select('*').eq('room_id', chat.id).eq('user_id', userId).maybeSingle()
       ])
 
@@ -40,8 +45,7 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
         console.log(' - Final Result: History Unlocked (Creator or Private Group).');
       } else if (memberInfo && memberInfo.created_at) {
         const date = new Date(memberInfo.created_at)
-        // 1시간 버퍼: 서버/클라이언트 시간 차이, 네트워크 지연 등으로 인한 메시지 유실 방지
-        // (가입 직후의 메시지가 '가입 전'으로 판단되어 숨겨지는 것을 막음)
+        // 1시간 버퍼
         date.setHours(date.getHours() - 1)
         joinedAt = date.toISOString()
         console.log(' - Final Result: MEMBER detected. History filtered by join time.');
