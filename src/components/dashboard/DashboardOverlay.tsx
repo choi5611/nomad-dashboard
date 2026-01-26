@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { useGeocoding } from "@/hooks/useGeocoding"
+import { useGlobalPresence } from "@/hooks/useGlobalPresence"
 
 export default function DashboardOverlay() {
   // Store selectors
@@ -121,6 +122,8 @@ export default function DashboardOverlay() {
     setIsSearchOpen(false)
   }
 
+  const globalOnlineCount = useGlobalPresence()
+
   const canVerifyLocation = profile?.country_code === selectedCity?.countryCode
 
   return (
@@ -160,9 +163,17 @@ export default function DashboardOverlay() {
                 )
             )}
           </div>
-          <p className="text-blue-200/80 text-[10px] md:text-sm mt-0.5 truncate">
-            {selectedCity ? `Global Command Center • ${selectedCity.countryCode}` : "Select a city to begin"}
-          </p>
+          <div className="flex items-center gap-3 mt-0.5">
+            <p className="text-blue-200/80 text-[10px] md:text-sm truncate uppercase tracking-widest font-mono">
+              {selectedCity ? `Global Command Center • ${selectedCity.countryCode}` : "Select a city to begin"}
+            </p>
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/5 rounded-md border border-white/5">
+              <div className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
+              <span className="text-[9px] md:text-[10px] font-bold text-white/40 uppercase tracking-tighter">
+                {globalOnlineCount} nomads online
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Central Search */}
