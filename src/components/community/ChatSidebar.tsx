@@ -98,7 +98,7 @@ export default function ChatSidebar() {
     <AnimatePresence>
       {isChatOpen && (
         <motion.div
-          initial={{ x: 400, opacity: 0 }}
+          initial={{ x: 400, opacity: 0, right: (isSidebarOpen && !isMobile) ? 384 : 0 }}
           animate={{
             x: 0,
             opacity: 1,
@@ -111,7 +111,7 @@ export default function ChatSidebar() {
             stiffness: 200,
             right: { duration: 0.3 }
           }}
-          className={`fixed top-0 h-full w-full md:w-[400px] bg-slate-900/90 backdrop-blur-3xl border-l border-white/10 z-[49] flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.5)] ${isMobile ? 'pb-[72px]' : ''}`}
+          className={`fixed top-0 right-0 h-full w-full md:w-[400px] bg-slate-900/90 backdrop-blur-3xl border-l border-white/10 z-[49] flex flex-col shadow-[-20px_0_50px_rgba(0,0,0,0.5)] ${isMobile ? 'pb-[72px]' : ''}`}
         >
           {/* Header */}
           <div className="p-4 border-b border-cyan-500/20 bg-cyan-500/5">
