@@ -86,9 +86,7 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
         error = result.error
         count = result.count
       } else {
-        const queryBuilder = chat.type === 'group' 
-          ? supabase.from('group_messages').select('*, sender:profiles!user_id(username, avatar_url)', { count: "exact" })
-          : supabase.from('direct_messages').select('*, sender:profiles!sender_id(username, avatar_url)', { count: "exact" })
+        const queryBuilder = supabase.from('direct_messages').select('*, sender:profiles!sender_id(username, avatar_url)', { count: "exact" })
 
         const result = await queryBuilder
           .eq('room_id', chat.id)

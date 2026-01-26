@@ -49,7 +49,7 @@ export function useMessages(
   useEffect(() => {
     if (!user || !membershipData) return
 
-    const tableName = chat.type === 'group' ? 'group_messages' : 'direct_messages'
+    const tableName = 'direct_messages' // 모든 채팅(DM, Group, Open)을 direct_messages 테이블로 통합
     // 필터 제거: RLS 정책과 충돌 방지를 위해 모든 이벤트를 수신하고 내부에서 거름
     const filterConfig = undefined 
 
@@ -125,22 +125,22 @@ export function useMessages(
     console.log(`[Chat-Flow] Sending:`, content);
 
     try {
-      if (chat.type === 'group') {
-        const { error } = await supabase.from('group_messages').insert({ room_id: chat.id, user_id: user.id, content })
-        if (error) throw error
-      } else {
-        const insertData: any = {
-          sender_id: user.id,
-          content,
-          is_anonymous: chat.type === 'open',
-          nickname: chat.type === 'open' ? anonNickname : null
-        }
-        if (chat.type === 'dm') insertData.receiver_id = chat.id
-        else insertData.room_id = chat.id
-        
-        const { error } = await supabase.from('direct_messages').insert(insertData)
-        if (error) throw error
+      const insertData: any = {
+        sender_id: user.id,
+        content,
+        is_anonymous: chat.type === 'open',
+        nickname: chat.type === 'open' ? anonNickname : null
       }
+      
+      if (chat.type === 'dm') {
+        insertData.receiver_id = chat.id
+      } else {
+        insertData.room_id = chat.id
+      }
+      
+      const { error } = await supabase.from('direct_messages').insert(insertData)
+      if (error) throw error
+      
       console.log(`[Chat-Flow] Send Success.`);
       
       // [핵심] 전송 직후 캐시 강제 무효화 -> 내가 보낸 메시지 즉시 로드
