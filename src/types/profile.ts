@@ -9,6 +9,8 @@ export interface Profile {
   country_code: string
   xp: number
   username_updated_at: string | null
+  is_stealth_mode: boolean
+  is_private_log: boolean
   created_at?: string
   updated_at?: string
 }

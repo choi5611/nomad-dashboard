@@ -78,10 +78,30 @@ export function useProfileUpdate(user: User | null, profile: Profile | null, fet
     }
   }
 
+  const handleUpdatePrivacy = async (key: 'is_stealth_mode' | 'is_private_log', value: boolean) => {
+    if (!user) return false
+    
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ [key]: value })
+        .eq("id", user.id)
+
+      if (error) throw error
+      
+      await fetchProfile(user.id)
+      return true
+    } catch (error: any) {
+      toast.error("설정 변경 실패: " + error.message)
+      return false
+    }
+  }
+
   return {
     username,
     setUsername,
     loading,
-    handleUpdateProfile
+    handleUpdateProfile,
+    handleUpdatePrivacy
   }
 }

@@ -5,7 +5,7 @@ import { useAuth } from "@/store/useAuth"
 export function useGlobalPresence() {
   const [displayCount, setDisplayCount] = useState(0)
   const realCountRef = useRef(0)
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
 
   useEffect(() => {
     const channel = supabase.channel('global-presence', {
@@ -29,9 +29,13 @@ export function useGlobalPresence() {
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await channel.track({
-            online_at: new Date().toISOString(),
-          })
+          // 스텔스 모드가 아닐 때만 트래킹 (익명이거나 stealth_mode가 false인 경우)
+          const isStealth = user && profile?.is_stealth_mode
+          if (!isStealth) {
+            await channel.track({
+              online_at: new Date().toISOString(),
+            })
+          }
         }
       })
 

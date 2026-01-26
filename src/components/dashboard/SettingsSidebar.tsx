@@ -18,7 +18,7 @@ export default function SettingsSidebar() {
   const isMobile = useMediaQuery("(max-width: 767px)")
 
   // 프로필 업데이트 훅
-  const { username, setUsername, loading, handleUpdateProfile } = useProfileUpdate(
+  const { username, setUsername, loading, handleUpdateProfile, handleUpdatePrivacy } = useProfileUpdate(
     user,
     profile,
     fetchProfile
@@ -149,6 +149,44 @@ export default function SettingsSidebar() {
                       onConfirm={handleAvatarUpload}
                     />
                   )}
+
+                  {/* Privacy Settings Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 px-1">
+                      <div className="w-1 h-3 bg-red-500 rounded-full" />
+                      <h3 className="text-sm font-bold text-white uppercase tracking-widest">Privacy Settings</h3>
+                    </div>
+                    
+                    <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                      {/* Stealth Mode */}
+                      <div className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-white">Stealth Mode</p>
+                          <p className="text-[10px] text-white/30 uppercase tracking-tighter">실시간 접속자 수 집계에서 나를 제외합니다.</p>
+                        </div>
+                        <button
+                          onClick={() => handleUpdatePrivacy('is_stealth_mode', !profile?.is_stealth_mode)}
+                          className={`w-10 h-6 rounded-full transition-all relative ${profile?.is_stealth_mode ? 'bg-cyan-500' : 'bg-white/10'}`}
+                        >
+                          <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${profile?.is_stealth_mode ? 'left-5' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      
+                      {/* Private Log */}
+                      <div className="p-4 flex items-center justify-between border-t border-white/5 hover:bg-white/5 transition-colors">
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-white">Hide Travel Log</p>
+                          <p className="text-[10px] text-white/30 uppercase tracking-tighter">내 프로필에서 여행 기록 타임라인을 숨깁니다.</p>
+                        </div>
+                        <button
+                          onClick={() => handleUpdatePrivacy('is_private_log', !profile?.is_private_log)}
+                          className={`w-10 h-6 rounded-full transition-all relative ${profile?.is_private_log ? 'bg-cyan-500' : 'bg-white/10'}`}
+                        >
+                          <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${profile?.is_private_log ? 'left-5' : 'left-1'}`} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Edit Form */}
                   <ProfileEditForm

@@ -242,7 +242,19 @@ export default function UserProfileModal({ userId, isOpen, onClose }: UserProfil
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -10 }}
                                 >
-                                    <TravelLog userId={userId} compact />
+                                    {profile?.is_private_log && currentUser?.id !== userId ? (
+                                        <div className="py-20 text-center flex flex-col items-center gap-4">
+                                            <div className="p-4 bg-white/5 rounded-full border border-white/10">
+                                                <Award className="w-8 h-8 text-white/20" />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-bold text-white/60">Signal Encrypted</p>
+                                                <p className="text-[10px] text-white/20 uppercase tracking-widest">This nomad's travel log is private.</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <TravelLog userId={userId} compact />
+                                    )}
                                 </motion.div>
                             )}
 
