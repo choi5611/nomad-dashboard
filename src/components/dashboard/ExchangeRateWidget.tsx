@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { GlassCard, CardHeader, CardTitle, CardContent } from "@/components/dashboard/GlassCard"
 import { DollarSign, Loader2, TrendingUp, AlertCircle } from "lucide-react"
 import axios from "axios"
+import AnimatedNumber from "@/components/ui/AnimatedNumber"
 
 interface ExchangeRateWidgetProps {
   targetCurrency: string
@@ -77,7 +78,8 @@ export default function ExchangeRateWidget({ targetCurrency }: ExchangeRateWidge
         ) : (
           <div>
             <div className="text-lg font-bold">
-               <span>1 {baseCurrency} = {rate ? rate.toLocaleString() : "-"} {targetCurrency}</span>
+               <span>1 {baseCurrency} = </span>
+               <AnimatedNumber value={rate || 0} precision={2} suffix={` ${targetCurrency}`} />
             </div>
             {rate && targetCurrency !== "USD" && (
                 <div className="text-xs text-green-400 mt-1 flex items-center gap-1">

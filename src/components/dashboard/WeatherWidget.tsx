@@ -1,6 +1,7 @@
 import { GlassCard, CardHeader, CardTitle, CardContent } from "@/components/dashboard/GlassCard"
 import { CloudSun, Loader2 } from "lucide-react"
 import { useWeather, getWeatherIcon, getWeatherLabel } from "@/hooks/useWeather"
+import AnimatedNumber from "@/components/ui/AnimatedNumber"
 
 interface WeatherWidgetProps {
   lat: number
@@ -26,7 +27,9 @@ export default function WeatherWidget({ lat, lng }: WeatherWidgetProps) {
           <div className="flex items-center gap-4">
             <span className="text-4xl drop-shadow-md">{getWeatherIcon(weather.weathercode)}</span>
             <div>
-              <div className="text-2xl font-bold"><span>{weather.temperature}°C</span></div>
+              <div className="text-2xl font-bold">
+                <AnimatedNumber value={weather.temperature} suffix="°C" />
+              </div>
               <div className="text-xs text-white/60"><span>{getWeatherLabel(weather.weathercode)}</span></div>
             </div>
           </div>

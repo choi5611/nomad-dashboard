@@ -1,5 +1,6 @@
 import { motion } from "framer-motion"
 import { getNomadRank } from "@/utils/rankUtils"
+import AnimatedNumber from "@/components/ui/AnimatedNumber"
 
 interface NomadRankBadgeProps {
   xp: number
@@ -28,7 +29,9 @@ export default function NomadRankBadge({ xp }: NomadRankBadgeProps) {
       <div className="space-y-1.5">
         <div className="flex justify-between text-[10px] uppercase font-mono tracking-tighter">
           <span className="text-white/40">Knowledge (XP)</span>
-          <span className="text-white/60">{xp} / {rank.nextLevelXp === 99999 ? 'MAX' : rank.nextLevelXp}</span>
+          <span className="text-white/60">
+            <AnimatedNumber value={xp} /> / {rank.nextLevelXp === 99999 ? 'MAX' : rank.nextLevelXp}
+          </span>
         </div>
         <div className="h-1 bg-white/5 rounded-full overflow-hidden">
           <motion.div

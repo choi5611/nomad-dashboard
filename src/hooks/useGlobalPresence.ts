@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/store/useAuth"
 
 export function useGlobalPresence() {
-  const [globalOnlineCount, setGlobalOnlineCount] = useState(0)
+  const [displayCount, setDisplayCount] = useState(0)
+  const realCountRef = useRef(0)
   const { user } = useAuth()
 
   useEffect(() => {
@@ -18,7 +19,13 @@ export function useGlobalPresence() {
     channel
       .on('presence', { event: 'sync' }, () => {
         const newState = channel.presenceState()
-        setGlobalOnlineCount(Object.keys(newState).length)
+        const currentCount = Object.keys(newState).length
+        realCountRef.current = currentCount
+        
+        // 처음 구독했을 때는 즉시 숫자를 보여줌
+        if (displayCount === 0 && currentCount > 0) {
+          setDisplayCount(currentCount)
+        }
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -28,10 +35,18 @@ export function useGlobalPresence() {
         }
       })
 
+    // 5분에 한 번씩만 UI 숫자를 갱신 (사용자 요청: 너무 자주 바뀌면 어지러움 방지)
+    const interval = setInterval(() => {
+      if (realCountRef.current !== displayCount) {
+        setDisplayCount(realCountRef.current)
+      }
+    }, 5 * 60 * 1000)
+
     return () => {
       supabase.removeChannel(channel)
+      clearInterval(interval)
     }
-  }, [user?.id])
+  }, [user?.id, displayCount])
 
-  return globalOnlineCount
+  return displayCount
 }
