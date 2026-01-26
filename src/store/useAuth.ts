@@ -10,7 +10,7 @@ interface AuthState {
   loading: boolean
   setSession: (session: Session | null) => void
   signOut: () => Promise<void>
-  fetchProfile: (userId: string) => Promise<void>
+  fetchProfile: (userId: string, silent?: boolean) => Promise<void>
 }
 
 export const useAuth = create<AuthState>((set) => ({
@@ -32,8 +32,8 @@ export const useAuth = create<AuthState>((set) => ({
     }
   },
 
-  fetchProfile: async (userId) => {
-    set({ loading: true })
+  fetchProfile: async (userId, silent = false) => {
+    if (!silent) set({ loading: true })
     try {
       const { data, error } = await supabase
         .from('profiles')

@@ -164,12 +164,29 @@ export default function SettingsSidebar() {
                           <p className="text-sm font-bold text-white">Stealth Mode</p>
                           <p className="text-[10px] text-white/30 uppercase tracking-tighter">실시간 접속자 수 집계에서 나를 제외합니다.</p>
                         </div>
-                        <button
+                        <motion.button
+                          whileTap={{ scale: 0.98 }}
                           onClick={() => handleUpdatePrivacy('is_stealth_mode', !profile?.is_stealth_mode)}
-                          className={`w-10 h-6 rounded-full transition-all relative ${profile?.is_stealth_mode ? 'bg-cyan-500' : 'bg-white/10'}`}
+                          className="w-11 h-6 rounded-full relative bg-white/10"
                         >
-                          <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${profile?.is_stealth_mode ? 'left-5' : 'left-1'}`} />
-                        </button>
+                          {/* Background Color Animation */}
+                          <motion.div 
+                            initial={false}
+                            animate={{ 
+                              backgroundColor: profile?.is_stealth_mode ? "rgb(6, 182, 212)" : "rgba(255, 255, 255, 0.1)" 
+                            }}
+                            className="absolute inset-0 rounded-full"
+                          />
+                          {/* Knob Animation */}
+                          <motion.div 
+                            initial={false}
+                            animate={{ 
+                              x: profile?.is_stealth_mode ? 20 : 0
+                            }}
+                            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                            className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md z-10"
+                          />
+                        </motion.button>
                       </div>
                       
                       {/* Private Log */}
@@ -178,12 +195,29 @@ export default function SettingsSidebar() {
                           <p className="text-sm font-bold text-white">Hide Travel Log</p>
                           <p className="text-[10px] text-white/30 uppercase tracking-tighter">내 프로필에서 여행 기록 타임라인을 숨깁니다.</p>
                         </div>
-                        <button
+                        <motion.button
+                          whileTap={{ scale: 0.98 }}
                           onClick={() => handleUpdatePrivacy('is_private_log', !profile?.is_private_log)}
-                          className={`w-10 h-6 rounded-full transition-all relative ${profile?.is_private_log ? 'bg-cyan-500' : 'bg-white/10'}`}
+                          className="w-11 h-6 rounded-full relative bg-white/10"
                         >
-                          <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${profile?.is_private_log ? 'left-5' : 'left-1'}`} />
-                        </button>
+                          {/* Background Color Animation */}
+                          <motion.div 
+                            initial={false}
+                            animate={{ 
+                              backgroundColor: profile?.is_private_log ? "rgb(6, 182, 212)" : "rgba(255, 255, 255, 0.1)" 
+                            }}
+                            className="absolute inset-0 rounded-full"
+                          />
+                          {/* Knob Animation */}
+                          <motion.div 
+                            initial={false}
+                            animate={{ 
+                              x: profile?.is_private_log ? 20 : 0
+                            }}
+                            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                            className="absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow-md z-10"
+                          />
+                        </motion.button>
                       </div>
                     </div>
                   </div>

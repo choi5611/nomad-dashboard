@@ -32,8 +32,8 @@ export default function UserProfileModal({ userId, isOpen, onClose }: UserProfil
       fetchData()
       setActiveTab('bio') // 모달 열릴 때 탭 초기화
 
-      // 실시간 친구 상태 구독
-      const channel = supabase
+      // 1. 실시간 친구 상태 구독
+      const friendshipChannel = supabase
         .channel(`profile-friendship-${userId}`)
         .on('postgres_changes', {
           event: '*',
@@ -45,8 +45,23 @@ export default function UserProfileModal({ userId, isOpen, onClose }: UserProfil
         })
         .subscribe()
 
+      // 2. 실시간 프로필 정보 구독 (프라이버시 설정 등 실시간 반영)
+      const profileChannel = supabase
+        .channel(`profile-updates-${userId}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id.eq.${userId}`
+        }, (payload) => {
+          console.log("👤 Profile Updated Real-time:", payload.new)
+          setProfile(payload.new)
+        })
+        .subscribe()
+
       return () => {
-        supabase.removeChannel(channel)
+        supabase.removeChannel(friendshipChannel)
+        supabase.removeChannel(profileChannel)
       }
     }
   }, [isOpen, userId, currentUser])
@@ -303,7 +318,7 @@ export default function UserProfileModal({ userId, isOpen, onClose }: UserProfil
                       {friendStatus === 'accepted' && (
                           <button
                               onClick={() => {
-                                  const { setActiveChat, closeSettings, openSidebar } = (useStore as any).getState()
+                                  const { setActiveChat } = (useStore as any).getState()
                                   
                                   // 1. 대화 상대 지정
                                   setActiveChat({

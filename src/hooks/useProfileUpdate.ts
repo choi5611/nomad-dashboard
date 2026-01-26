@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import type { User } from "@supabase/supabase-js"
 import type { Profile } from "@/types/profile"
 
-export function useProfileUpdate(user: User | null, profile: Profile | null, fetchProfile: (userId: string) => Promise<void>) {
+export function useProfileUpdate(user: User | null, profile: Profile | null, fetchProfile: (userId: string, silent?: boolean) => Promise<void>) {
   const [username, setUsername] = useState("")
   const [loading, setLoading] = useState(false)
   const queryClient = useQueryClient()
@@ -89,7 +89,8 @@ export function useProfileUpdate(user: User | null, profile: Profile | null, fet
 
       if (error) throw error
       
-      await fetchProfile(user.id)
+      // 배경에서 조용히 데이터 갱신 (화면 깜빡임 방지)
+      await fetchProfile(user.id, true)
       return true
     } catch (error: any) {
       toast.error("설정 변경 실패: " + error.message)
