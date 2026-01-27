@@ -5,6 +5,7 @@ import * as THREE from "three"
 import Pin from "./Pin"
 import { GLOBE_RADIUS } from "./math"
 import { useStore, type City } from "@/store/useStore"
+import { useCityActivity } from "@/hooks/useCityActivity"
 
 // 국가 코드 -> 한글 국가명 매핑
 const COUNTRY_NAMES: Record<string, string> = {
@@ -64,6 +65,7 @@ export default function Globe({ onSelectPin }: GlobeProps) {
   const groupRef = useRef<THREE.Group>(null)
   const setSelectedCity = useStore((state) => state.setSelectedCity)
   const cities = useStore((state) => state.cities)
+  const activities = useCityActivity()
   const [cameraDistance, setCameraDistance] = useState(20)
 
   // 텍스처 로드
@@ -164,6 +166,7 @@ export default function Globe({ onSelectPin }: GlobeProps) {
           lat={city.lat} 
           lng={city.lng} 
           label={cameraDistance > 25 ? (COUNTRY_NAMES[city.countryCode] || city.name) : city.name} 
+          activityCount={activities[city.name.toLowerCase()] || 0}
           occludeRef={globeRef}
           onSelect={(pos) => handlePinClick(city, pos)} 
         />
