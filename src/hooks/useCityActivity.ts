@@ -7,21 +7,22 @@ export function useCityActivity() {
   useEffect(() => {
     async function fetchActivities() {
       try {
-        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+        // 최근 30분간의 활동만 체크
+        const recentThreshold = new Date(Date.now() - 30 * 60 * 1000).toISOString()
 
-        // 1. Fetch posts in last 24h
+        // 1. Fetch posts in last 30m
         const { data: postsData, error: postsError } = await supabase
           .from('posts')
           .select('city_id')
-          .gt('created_at', yesterday)
+          .gt('created_at', recentThreshold)
 
         if (postsError) throw postsError
 
-        // 2. Fetch messages in last 24h
+        // 2. Fetch messages in last 30m
         const { data: messagesData, error: messagesError } = await supabase
           .from('messages')
           .select('city_id')
-          .gt('created_at', yesterday)
+          .gt('created_at', recentThreshold)
 
         if (messagesError) throw messagesError
 
@@ -30,7 +31,7 @@ export function useCityActivity() {
         postsData?.forEach(p => {
           if (p.city_id) {
             const id = p.city_id.toLowerCase()
-            counts[id] = (counts[id] || 0) + 2 // Posts carry more weight (x2)
+            counts[id] = (counts[id] || 0) + 3 // 게시글은 더 높은 가중치 (+3)
           }
         })
 
@@ -49,8 +50,8 @@ export function useCityActivity() {
 
     fetchActivities()
     
-    // Refresh every 10 minutes or on window focus
-    const interval = setInterval(fetchActivities, 10 * 60 * 1000)
+    // 1분마다 또는 창 포커스 시 갱신하여 라이브 느낌 강화
+    const interval = setInterval(fetchActivities, 1 * 60 * 1000)
     window.addEventListener('focus', fetchActivities)
 
     return () => {
