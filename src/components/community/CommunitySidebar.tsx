@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Plus, Loader2, MessageSquare, Search } from "lucide-react"
+import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Plus, Loader2, MessageSquare, Search, RefreshCw } from "lucide-react"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { useStore } from "@/store/useStore"
 import { useInView } from "react-intersection-observer"
@@ -8,6 +8,7 @@ import PostCard from "./PostCard"
 import WritePostForm from "./WritePostForm"
 import UserSearchList from "./UserSearchList"
 import { useQueryClient } from "@tanstack/react-query"
+import PullToRefresh from "./PullToRefresh"
 
 const typeIcons = {
   experience: Building2,
@@ -43,6 +44,7 @@ export default function CommunitySidebar() {
   const { isChatOpen, toggleChat } = useStore()
   const isMobile = useMediaQuery("(max-width: 767px)")
   const queryClient = useQueryClient()
+  const [isRefreshing, setIsRefreshing] = useState(false)
   
   const { ref, inView } = useInView()
   
@@ -89,6 +91,22 @@ export default function CommunitySidebar() {
           >
             <Plus className="w-5 h-5" />
           </button>
+          
+          {/* Desktop Refresh Button */}
+          {!isMobile && (
+            <button 
+              onClick={async () => {
+                setIsRefreshing(true)
+                await queryClient.refetchQueries({ queryKey: ["posts"] })
+                setTimeout(() => setIsRefreshing(false), 500)
+              }} 
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-cyan-400"
+              title="새로고침"
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          )}
           <button 
             onClick={toggleChat} 
             className={`p-2 rounded-lg transition-colors  ${
@@ -178,47 +196,56 @@ export default function CommunitySidebar() {
       )}
 
       {/* Content Area */}
-      <div className="overflow-y-auto h-[calc(100%-120px)] p-4 space-y-4 no-scrollbar">
-        {activeTab === "users" ? (
-          <UserSearchList searchQuery={searchQuery} />
-        ) : status === 'pending' ? (
-          <div className="flex flex-col items-center justify-center h-40 text-white/30 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin" />
-            <p className="text-sm">게시글을 불러오는 중...</p>
-          </div>
-        ) : posts.length > 0 ? (
-          <>
-            {posts.map((post) => {
-              const TypeIcon = typeIcons[post.category as keyof typeof typeIcons] || Building2
-              const typeLabel = typeLabels[post.category as keyof typeof typeLabels] || "기타"
-
-              return (
-                <PostCard 
-                  key={post.id} 
-                  post={post} 
-                  typeIcon={TypeIcon} 
-                  typeLabel={typeLabel} 
-                  onDelete={async () => {
-                    console.log("♻️ Post deleted, resetting all post queries for fresh data...")
-                    await queryClient.resetQueries({ queryKey: ["posts"] })
-                    // 만약 가상 뷰 싱크가 느릴 경우를 대비해 1초 뒤 한 번 더 무효화
-                    setTimeout(() => queryClient.invalidateQueries({ queryKey: ["posts"] }), 1000)
-                  }}
-                  onTagClick={(tag) => setSelectedTag(tag)}
-                />
-              )
-            })}
-             {/* Infinite Scroll Trigger */}
-            <div ref={ref} className="h-10 flex justify-center items-center">
-              {isFetchingNextPage && <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />}
+      <PullToRefresh 
+        onRefresh={async () => {
+          console.log("🔄 Pull-to-refresh triggered, resetting posts...")
+          await queryClient.refetchQueries({ queryKey: ["posts"] })
+        }}
+        className="h-[calc(100%-120.5px)]"
+        disabled={!isMobile}
+      >
+        <div className="p-4 space-y-4">
+          {activeTab === "users" ? (
+            <UserSearchList searchQuery={searchQuery} />
+          ) : status === 'pending' ? (
+            <div className="flex flex-col items-center justify-center h-40 text-white/30 gap-3">
+              <Loader2 className="w-8 h-8 animate-spin" />
+              <p className="text-sm">게시글을 불러오는 중...</p>
             </div>
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-40 text-white/30 text-center px-6">
-            <p className="text-sm">아직 게시글이 없습니다.<br/>첫 번째 소식을 들려주세요!</p>
-          </div>
-        )}
-      </div>
+          ) : posts.length > 0 ? (
+            <>
+              {posts.map((post) => {
+                const TypeIcon = typeIcons[post.category as keyof typeof typeIcons] || Building2
+                const typeLabel = typeLabels[post.category as keyof typeof typeLabels] || "기타"
+
+                return (
+                  <PostCard 
+                    key={post.id} 
+                    post={post} 
+                    typeIcon={TypeIcon} 
+                    typeLabel={typeLabel} 
+                    onDelete={async () => {
+                      console.log("♻️ Post deleted, resetting all post queries for fresh data...")
+                      await queryClient.resetQueries({ queryKey: ["posts"] })
+                      // 만약 가상 뷰 싱크가 느릴 경우를 대비해 1초 뒤 한 번 더 무효화
+                      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["posts"] }), 1000)
+                    }}
+                    onTagClick={(tag) => setSelectedTag(tag)}
+                  />
+                )
+              })}
+               {/* Infinite Scroll Trigger */}
+              <div ref={ref} className="h-10 flex justify-center items-center">
+                {isFetchingNextPage && <Loader2 className="w-6 h-6 animate-spin text-cyan-500" />}
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-40 text-white/30 text-center px-6">
+              <p className="text-sm">아직 게시글이 없습니다.<br/>첫 번째 소식을 들려주세요!</p>
+            </div>
+          )}
+        </div>
+      </PullToRefresh>
       {isWriting && (
         <WritePostForm
           onClose={() => setIsWriting(false)}

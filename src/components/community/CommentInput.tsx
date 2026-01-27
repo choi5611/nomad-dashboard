@@ -8,7 +8,7 @@ interface CommentInputProps {
   replyTo: Comment | null
   onSubmit: (e: React.FormEvent) => void
   onCancelReply: () => void
-  inputRef: React.RefObject<HTMLInputElement>
+  inputRef: React.RefObject<HTMLInputElement | null>
   user: any
 }
 
