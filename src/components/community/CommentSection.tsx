@@ -14,9 +14,10 @@ interface CommentSectionProps {
   postId: string
   postAuthorId: string
   onCommentCountChange?: (count: number) => void
+  highlightCommentId?: string
 }
 
-export default function CommentSection({ postId, postAuthorId, onCommentCountChange }: CommentSectionProps) {
+export default function CommentSection({ postId, postAuthorId, onCommentCountChange, highlightCommentId }: CommentSectionProps) {
   const user = useAuth((state) => state.user)
   const {
     data,
@@ -83,6 +84,7 @@ export default function CommentSection({ postId, postAuthorId, onCommentCountCha
           onAvatarClick={openProfile}
           sentinelRef={ref}
           isFetchingNextPage={isFetchingNextPage}
+          highlightCommentId={highlightCommentId}
         />
       </div>
 

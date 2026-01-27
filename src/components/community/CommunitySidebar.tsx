@@ -61,6 +61,16 @@ export default function CommunitySidebar() {
     searchQuery: searchQuery
   })
 
+  const navigationTarget = useStore((state) => state.navigationTarget)
+
+  useEffect(() => {
+    if (navigationTarget) {
+      setActiveTab("all")
+      setSelectedTag(null)
+      setSearchQuery("")
+    }
+  }, [navigationTarget])
+
   useEffect(() => {
     if (inView && hasNextPage) {
       fetchNextPage()

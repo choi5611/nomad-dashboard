@@ -11,6 +11,7 @@ interface CommentListProps {
   onAvatarClick: (userId: string) => void
   sentinelRef: (node?: Element | null) => void
   isFetchingNextPage: boolean
+  highlightCommentId?: string
 }
 
 export default function CommentList({
@@ -21,7 +22,8 @@ export default function CommentList({
   onDelete,
   onAvatarClick,
   sentinelRef,
-  isFetchingNextPage
+  isFetchingNextPage,
+  highlightCommentId
 }: CommentListProps) {
   // 계층형 구조로 변환 (부모 - 자식)
   const rootComments = comments.filter(c => !c.parent_id)
@@ -51,6 +53,7 @@ export default function CommentList({
             onReply={() => onReply(comment)}
             onDelete={() => onDelete(comment.id)}
             onAvatarClick={() => onAvatarClick(comment.author.id)}
+            isHighlighted={highlightCommentId === comment.id}
           />
           {/* 대댓글 */}
           <div className="pl-8 space-y-2 border-l-2 border-white/5 ml-2">
@@ -62,6 +65,7 @@ export default function CommentList({
                 onReply={() => onReply(reply)}
                 onDelete={() => onDelete(reply.id)}
                 onAvatarClick={() => onAvatarClick(reply.author.id)}
+                isHighlighted={highlightCommentId === reply.id}
               />
             ))}
           </div>

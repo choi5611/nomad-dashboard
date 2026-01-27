@@ -52,6 +52,9 @@ interface AppState {
   // 참여 중인 채팅방 정보
   joinedRooms: ChatRoom[]
   fetchJoinedRooms: (userId: string) => Promise<void>
+  // 네비게이션 타겟 (알림 클릭 시 이동용)
+  navigationTarget: { postId: string, commentId?: string } | null
+  setNavigationTarget: (target: { postId: string, commentId?: string } | null) => void
 }
 
 const AUTO_ROTATE_DELAY = 5000 // 5초 후 다시 회전
@@ -217,5 +220,10 @@ export const useStore = create<AppState>((set, get) => ({
     } catch (err) {
       console.error('Error fetching joined rooms globally:', err)
     }
-  }
+  },
+  navigationTarget: null,
+  setNavigationTarget: (target) => set({ 
+    navigationTarget: target,
+    isSidebarOpen: !!target // 타겟이 설정되면 사이드바를 자동으로 엽니다.
+  })
 }))

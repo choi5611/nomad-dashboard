@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useAuth } from "@/store/useAuth"
+import { useStore } from "@/store/useStore"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { usePostLike } from "@/hooks/usePostLike"
@@ -40,6 +41,9 @@ export default function PostCard({ post, typeIcon, typeLabel, onDelete, onTagCli
   const [commentCount, setCommentCount] = useState(post.comments_count || 0)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  const navigationTarget = useStore((state) => state.navigationTarget)
 
   const authorName = post.profiles?.username || "익명"
   const avatarUrl = post.profiles?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.id}`
@@ -61,6 +65,17 @@ export default function PostCard({ post, typeIcon, typeLabel, onDelete, onTagCli
   useEffect(() => {
     setCommentCount(post.comments_count || 0)
   }, [post.comments_count])
+
+  // 알림 등으로 인한 네비게이션 처리
+  useEffect(() => {
+    if (navigationTarget?.postId === post.id) {
+      setShowComments(true)
+      // 약간의 지연을 주어 UI가 확장된 후 스크롤되도록 함
+      setTimeout(() => {
+        cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+    }
+  }, [navigationTarget, post.id])
 
   const handleDelete = async () => {
     if (!user) return
@@ -101,7 +116,12 @@ export default function PostCard({ post, typeIcon, typeLabel, onDelete, onTagCli
   }
 
   return (
-    <div className="bg-white/5 rounded-xl p-4 border border-white/10 hover:border-cyan-500/30 transition-colors group relative">
+    <div 
+      ref={cardRef}
+      className={`bg-white/5 rounded-xl p-4 border transition-colors group relative ${
+        navigationTarget?.postId === post.id ? 'border-cyan-500 bg-cyan-500/5' : 'border-white/10 hover:border-cyan-500/30'
+      }`}
+    >
       {/* Post Header */}
       <PostHeader
         authorName={authorName}
@@ -143,6 +163,7 @@ export default function PostCard({ post, typeIcon, typeLabel, onDelete, onTagCli
           postId={post.id}
           postAuthorId={post.author_id}
           onCommentCountChange={setCommentCount}
+          highlightCommentId={navigationTarget?.postId === post.id ? navigationTarget.commentId : undefined}
         />
       )}
 

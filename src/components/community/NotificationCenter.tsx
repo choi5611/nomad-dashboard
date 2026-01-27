@@ -1,17 +1,19 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Bell, Heart, MessageCircle, X, Circle, UserPlus } from "lucide-react"
+import { Bell, Heart, MessageCircle, X, Circle, UserPlus, Reply, AtSign } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/store/useAuth"
+import { useStore } from "@/store/useStore"
 import { formatDistanceToNow } from "date-fns"
 import { ko } from "date-fns/locale"
 
 interface Notification {
   id: string
   created_at: string
-  type: 'like' | 'comment' | 'friend_request'
+  type: 'like' | 'comment' | 'friend_request' | 'reply' | 'mention'
   is_read: boolean
-  post_id?: string | null  // Optional: friend_request doesn't have post_id
+  post_id?: string | null
+  comment_id?: string | null
   sender_id: string
   sender_profile: {
     username: string
@@ -21,6 +23,7 @@ interface Notification {
 
 export default function NotificationCenter() {
   const { user } = useAuth()
+  const setNavigationTarget = useStore(state => state.setNavigationTarget)
   const [isOpen, setIsOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -117,6 +120,55 @@ export default function NotificationCenter() {
     }
   }
 
+  const handleNotifClick = async (n: Notification) => {
+    markAsRead(n.id)
+    setIsOpen(false)
+    
+    if (n.post_id) {
+      // 1. 포스트의 도시 정보를 가져와서 이동이 필요한지 확인
+      const { data: postData } = await supabase
+        .from('posts')
+        .select(`
+          city_id,
+          cities (
+            display_name,
+            lat,
+            lng,
+            timezone,
+            country_code,
+            currency_code
+          )
+        `)
+        .eq('id', n.post_id)
+        .single()
+
+      if (postData?.cities) {
+        const cityData = postData.cities as any
+        const city = {
+          name: cityData.display_name,
+          lat: cityData.lat,
+          lng: cityData.lng,
+          timezone: cityData.timezone,
+          countryCode: cityData.country_code,
+          currencyCode: cityData.currency_code
+        }
+
+        // 현재 도시와 다르면 도시 변경
+        if (useStore.getState().selectedCity?.name !== city.name) {
+          useStore.getState().setSelectedCity(city)
+        }
+      }
+
+      setNavigationTarget({ 
+        postId: n.post_id, 
+        commentId: n.comment_id || undefined 
+      })
+    } else if (n.type === 'friend_request') {
+      useStore.getState().setActiveTab('friends')
+      useStore.getState().openSidebar()
+    }
+  }
+
   return (
     <div className="relative">
       {/* Trigger Button */}
@@ -172,10 +224,7 @@ export default function NotificationCenter() {
                   notifications.map((n) => (
                     <div 
                       key={n.id}
-                      onClick={() => {
-                        markAsRead(n.id)
-                        // TODO: Navigate to post
-                      }}
+                      onClick={() => handleNotifClick(n)}
                       className={`p-4 border-b border-white/5 cursor-pointer transition-colors hover:bg-white/5 flex gap-3 relative ${!n.is_read ? 'bg-cyan-500/5' : ''}`}
                     >
                       <div className="relative">
@@ -188,6 +237,10 @@ export default function NotificationCenter() {
                             <Heart className="w-3 h-3 text-red-500 fill-red-500" />
                           ) : n.type === 'comment' ? (
                             <MessageCircle className="w-3 h-3 text-cyan-400 fill-cyan-400" />
+                          ) : n.type === 'reply' ? (
+                            <Reply className="w-3 h-3 text-emerald-400" />
+                          ) : n.type === 'mention' ? (
+                            <AtSign className="w-3 h-3 text-amber-400" />
                           ) : (
                             <UserPlus className="w-3 h-3 text-indigo-400 fill-indigo-400" />
                           )}
@@ -199,6 +252,8 @@ export default function NotificationCenter() {
                           <span>님이</span>
                           {n.type === 'like' ? <span> 게시글을 좋아합니다.</span> : 
                            n.type === 'comment' ? <span> 댓글을 남겼습니다.</span> : 
+                           n.type === 'reply' ? <span> 내 댓글에 답글을 남겼습니다.</span> : 
+                           n.type === 'mention' ? <span> 댓글에서 나를 언급했습니다.</span> : 
                            <span> 친구 요청을 보냈습니다.</span>}
                         </p>
                         <p className="text-[10px] text-white/30 mt-1 font-mono">
