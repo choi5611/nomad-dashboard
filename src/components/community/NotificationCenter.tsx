@@ -164,8 +164,11 @@ export default function NotificationCenter() {
         commentId: n.comment_id || undefined 
       })
     } else if (n.type === 'friend_request') {
-      useStore.getState().setActiveTab('friends')
-      useStore.getState().openSidebar()
+      const store = useStore.getState()
+      store.setActiveTab('friends')
+      store.setNavigationTarget(null) // 기존 포스트 타겟 초기화
+      // 친구 요청은 Terminal(ChatSidebar)에 있으므로 커뮤니티 사이드바는 닫고 터미널을 엽니다.
+      useStore.setState({ isChatOpen: true, isSidebarOpen: false })
     }
   }
 

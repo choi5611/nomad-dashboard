@@ -41,7 +41,7 @@ export default function CommunitySidebar() {
   const [isWriting, setIsWriting] = useState(false)
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
-  const { isChatOpen, toggleChat } = useStore()
+  const { isChatOpen, toggleChat, setActiveTab: setGlobalActiveTab } = useStore()
   const isMobile = useMediaQuery("(max-width: 767px)")
   const queryClient = useQueryClient()
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -175,7 +175,11 @@ export default function CommunitySidebar() {
         {TABS.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id)
+              if (tab.id === "users") setGlobalActiveTab('friends')
+              else setGlobalActiveTab('city')
+            }}
 
             className={`flex-1 py-3 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 transition-colors ${
               activeTab === tab.id ? "text-cyan-400 border-b-2 border-cyan-400 bg-white/5" 
