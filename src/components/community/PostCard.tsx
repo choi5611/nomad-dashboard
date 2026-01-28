@@ -62,9 +62,9 @@ export default function PostCard({ post, typeIcon, typeLabel, onDelete, onTagCli
   const images = post.image_urls || []
   const { page, direction, currentImageIndex, hasMultipleImages, paginate } = useImageCarousel(images.length)
 
-  useEffect(() => {
-    setCommentCount(post.comments_count || 0)
-  }, [post.comments_count])
+  // useEffect(() => {
+  //   setCommentCount(post.comments_count || 0)
+  // }, [post.comments_count])
 
   // 알림 등으로 인한 네비게이션 처리
   useEffect(() => {

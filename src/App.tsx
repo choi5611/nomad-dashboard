@@ -95,21 +95,35 @@ function App() {
     return () => subscription.unsubscribe()
   }, [setSession, updateUserLocation])
 
+  // useEffect(() => {
+  //   const cachedLocation = sessionStorage.getItem("nomad_location_detected")
+  //   if (!hasDetectedLocation) {
+  //     const timeout = setTimeout(() => {
+  //       if (!cachedLocation) {
+  //         detectAndSetInitialLocation()
+  //       } else {
+  //         applyLocation(cachedLocation)
+  //       }
+  //     }, 0)
+  //     return () => clearTimeout(timeout)
+  //   }
+  // }, [hasDetectedLocation, detectAndSetInitialLocation, applyLocation])
+
+  // Joined Rooms Sync
+  
   useEffect(() => {
     const cachedLocation = sessionStorage.getItem("nomad_location_detected")
     if (!hasDetectedLocation) {
-      const timeout = setTimeout(() => {
+
         if (!cachedLocation) {
           detectAndSetInitialLocation()
         } else {
           applyLocation(cachedLocation)
         }
-      }, 0)
-      return () => clearTimeout(timeout)
     }
   }, [hasDetectedLocation, detectAndSetInitialLocation, applyLocation])
 
-  // Joined Rooms Sync
+  
   useEffect(() => {
     if (!user) {
       useStore.setState({ joinedRooms: [] })
