@@ -1,6 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
 import { sanitizeSearchQuery, sanitizeHashtag } from "@/utils/sanitize"
+import type { SearchablePost } from "@/types/db"
 
 interface UseInfinitePostsProps {
   category: string
@@ -70,7 +71,9 @@ export function useInfinitePosts({
         })
       }
 
-      const { data, error } = await query
+      // 제네릭을 사용하여 반환 타입을 명시하거나, returns() 메서드를 사용할 수 있습니다.
+      // 여기서는 data를 SearchablePost[]로 캐스팅하여 안정성을 확보합니다.
+      const { data, error } = await query.returns<SearchablePost[]>()
 
       if (error) throw error
 
