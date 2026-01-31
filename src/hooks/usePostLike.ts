@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import type { User } from "@supabase/supabase-js"
@@ -29,7 +29,7 @@ export function usePostLike(postId: string, postAuthorId: string, user: User | n
     setIsLiked(!!data)
   }
 
-  const toggleLike = async () => {
+  const toggleLike = useCallback(async () => {
     if (!user) {
       toast.error("로그인이 필요합니다.")
       return
@@ -77,7 +77,7 @@ export function usePostLike(postId: string, postAuthorId: string, user: User | n
       setLikeCount(prevCount)
       toast.error("좋아요 처리 중 오류가 발생했습니다.")
     }
-  }
+  }, [user, isLiked, likeCount, postId, postAuthorId])
 
   return {
     isLiked,

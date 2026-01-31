@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useStore } from "@/store/useStore"
 import { useInfiniteMessages } from "./useInfiniteMessages"
-import type { ChatInfo } from "@/types/message"
+import type { ChatInfo, DMMessage } from "@/types/message"
 import type { User } from "@supabase/supabase-js"
 
 export function useMessages(
@@ -15,7 +15,7 @@ export function useMessages(
 ) {
   const queryClient = useQueryClient()
   // 실시간으로 들어오는 메시지를 담는 버퍼 (캐시와 별개로 관리)
-  const [realtimeBuffer, setRealtimeBuffer] = useState<any[]>([])
+  const [realtimeBuffer, setRealtimeBuffer] = useState<DMMessage[]>([])
   
   // 1. 기존 메시지 데이터 로드
   const {
@@ -41,7 +41,7 @@ export function useMessages(
     
     // 전체를 시간순으로 정렬 (오래된 것 -> 최신 것)
     return Array.from(uniqueMap.values()).sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     )
   }, [data, realtimeBuffer])
 
@@ -63,7 +63,7 @@ export function useMessages(
         table: tableName,
         filter: filterConfig
       }, async (payload) => {
-        const newMessage = payload.new as any
+        const newMessage = payload.new as DMMessage
         const senderId = newMessage.sender_id || newMessage.user_id
 
         // 1. 방 ID 체크 (다른 방 메시지 무시)
@@ -79,7 +79,8 @@ export function useMessages(
         console.log(`[Chat-Flow] New Message Signal Received`);
 
         if (!newMessage.sender) {
-          const { data: p } = await supabase.from('profiles').select('username, avatar_url, country_code').eq('id', senderId).single()
+          const { data: p } = await supabase.from('profiles').select('username, avatar_url, country_code').eq('id', senderId!).single()
+          // @ts-ignore - sender 구조 맞추기 (임시)
           if (p) newMessage.sender = p
         }
 
