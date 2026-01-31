@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Plus, Loader2, MessageSquare, Search, RefreshCw } from "lucide-react"
+import { X, MapPin, Utensils, Coffee, Building2, AlertTriangle, Plus, Loader2, MessageSquare, Search, RefreshCw, Trophy } from "lucide-react"
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 import { useStore } from "@/store/useStore"
 import { useInView } from "react-intersection-observer"
@@ -9,6 +9,7 @@ import WritePostForm from "./WritePostForm"
 import UserSearchList from "./UserSearchList"
 import { useQueryClient } from "@tanstack/react-query"
 import PullToRefresh from "./PullToRefresh"
+import LeaderboardModal from "./LeaderboardModal"
 
 const typeIcons = {
   experience: Building2,
@@ -39,6 +40,7 @@ export default function CommunitySidebar() {
   const closeSidebar = useStore((state) => state.closeSidebar)
   const [activeTab, setActiveTab] = useState("all")
   const [isWriting, setIsWriting] = useState(false)
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false)
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const { isChatOpen, toggleChat, setActiveTab: setGlobalActiveTab } = useStore()
@@ -94,6 +96,14 @@ export default function CommunitySidebar() {
           </h2>
         </div>
         <div className="flex items-center gap-1">
+          <button 
+            onClick={() => setIsLeaderboardOpen(true)}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-yellow-400 group relative"
+            title="리더보드 (Ranking)"
+          >
+            <Trophy className="w-5 h-5 group-hover:drop-shadow-[0_0_8px_rgba(250,204,21,0.5)] transition-all" />
+          </button>
+
           <button 
             onClick={() => setIsWriting(true)} 
             className="p-2 hover:bg-white/10 rounded-lg transition-colors text-cyan-400"
@@ -267,6 +277,7 @@ export default function CommunitySidebar() {
           tabs={TABS} 
         />
       )}
+      <LeaderboardModal isOpen={isLeaderboardOpen} onClose={() => setIsLeaderboardOpen(false)} />
     </div>
   )
 }
