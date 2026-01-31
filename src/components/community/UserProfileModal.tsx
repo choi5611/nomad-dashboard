@@ -9,6 +9,7 @@ import { getNomadRank } from "@/utils/rankUtils"
 import TravelLog from "./TravelLog"
 import MedalCollection from "../dashboard/MedalCollection"
 import { useInfinitePosts } from "@/hooks/useInfinitePosts"
+import { BADGES } from "@/constants/badges"
 import PostCard from "./PostCard"
 
 interface UserProfileModalProps {
@@ -250,6 +251,36 @@ export default function UserProfileModal({ userId, isOpen, onClose }: UserProfil
                                     </div>
 
                                     <div className="pt-2">
+                                        <div className="flex items-center gap-2 mb-4 px-1">
+                                            <Award className="w-4 h-4 text-cyan-400" />
+                                            <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.2em] opacity-60">Badges</h3>
+                                        </div>
+                                        <div className="flex flex-wrap gap-3">
+                                            {Object.values(BADGES).map((badge) => {
+                                                const hasBadge = (profile?.badges || []).includes(badge.id)
+                                                return (
+                                                    <div 
+                                                        key={badge.id}
+                                                        className={`relative group p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                                                            hasBadge 
+                                                            ? `bg-white/5 border-white/10 ${badge.color || 'text-white'}` 
+                                                            : 'bg-white/5 border-transparent opacity-30 grayscale'
+                                                        }`}
+                                                        title={badge.description}
+                                                    >
+                                                        <span className="text-2xl">{badge.icon}</span>
+                                                        <span className="text-[10px] font-bold whitespace-nowrap">{badge.name}</span>
+                                                        
+                                                        {!hasBadge && (
+                                                            <div className="absolute inset-0 bg-black/50 rounded-xl" />
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4">
                                         <div className="flex items-center gap-2 mb-4 px-1">
                                             <Award className="w-4 h-4 text-cyan-400" />
                                             <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.2em] opacity-60">Earned Medals</h3>
