@@ -1,0 +1,42 @@
+{
+  "name": "Nomad Dashboard - Digital Nomad Hub",
+  "short_name": "Nomad OS",
+  "description": "전 세계를 누비는 디지털 노마드를 위한 글로벌 커뮤니티 & 대시보드",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#0ea5e9",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["social", "travel", "productivity"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "City Chat",
+      "short_name": "Chat",
+      "description": "Open city chat terminal",
+      "url": "/?tab=chat",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Community Feed",
+      "short_name": "Feed",
+      "description": "Browse nomad posts",
+      "url": "/?tab=feed",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
