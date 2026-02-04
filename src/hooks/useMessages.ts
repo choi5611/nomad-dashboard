@@ -102,7 +102,7 @@ export function useMessages(
             }
         }, 100)
       })
-      .subscribe((status) => {
+      .subscribe(() => {
           // 객체 자체를 찍으면 브라우저 콘솔에서 [object Object]로 보일 수 있으므로 문자열로 찍기
       })
     

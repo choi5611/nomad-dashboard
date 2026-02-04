@@ -83,7 +83,7 @@ export default function CreateChatModal({ isOpen, onClose, user, onSuccess, init
         }
 
         // 개설자의 custom_name도 업데이트 (FRIENDS 탭에서 표시되도록)
-        const { data: memberUpdateResult, error: memberError } = await supabase
+        const { error: memberError } = await supabase
           .from('room_members')
           .update({ custom_name: name.trim() })
           .eq('room_id', initialData.id)
