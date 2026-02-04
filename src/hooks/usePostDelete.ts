@@ -27,7 +27,6 @@ export function usePostDelete({ postId, authorId, onDelete }: UsePostDeleteProps
 
     try {
       setIsDeleting(true)
-      console.log(`🚀 Attempting to delete post: ${postId} (Current User: ${user.id})`)
 
       // 1. 본문 삭제 (작성자 ID를 조건에 추가하여 RLS 권한을 한 번 더 보증)
       const { error, count } = await supabase
@@ -43,7 +42,6 @@ export function usePostDelete({ postId, authorId, onDelete }: UsePostDeleteProps
         throw new Error("삭제할 수 없는 게시글이거나 권한이 없습니다.")
       }
 
-      console.log("✅ Database confirmed deletion.")
 
       // 2. XP 환수 (-10 XP) - 어뷰징 방지
       // 이 부분은 실패해도 게시글 삭제 자체를 되돌리진 않음 (선택적)

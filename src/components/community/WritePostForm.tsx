@@ -107,7 +107,6 @@ export default function WritePostForm({ onClose, onPostCreate, tabs }: WritePost
       let finalCityId = selectedCity?.name?.toLowerCase() || "unknown"
       
       if (discoveredCity && selectedCity?.name === discoveredCity.name) {
-        console.log("🚀 Discovery Phase: Officially registering new land:", discoveredCity.name)
         const success = await registerCity(discoveredCity)
         if (success) {
           toast.success(`축하합니다! ${discoveredCity.name}의 최초 발견자가 되셨습니다! 🏆`)

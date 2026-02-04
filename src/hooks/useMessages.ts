@@ -53,7 +53,6 @@ export function useMessages(
     // 필터 제거: RLS 정책과 충돌 방지를 위해 모든 이벤트를 수신하고 내부에서 거름
     const filterConfig = undefined 
 
-    console.log(`[Chat-Flow] Subscribing to ${chat.name}... (Filter: ${filterConfig})`);
 
     const channel = supabase
       .channel(`chat:${chat.id}:${Date.now()}`) // 매번 새로운 고유 채널 생성
@@ -76,7 +75,6 @@ export function useMessages(
           if (!isMyDM) return;
         }
 
-        console.log(`[Chat-Flow] New Message Signal Received`);
 
         if (!newMessage.sender) {
           const { data: p } = await supabase.from('profiles').select('username, avatar_url, country_code').eq('id', senderId!).single()
@@ -106,11 +104,9 @@ export function useMessages(
       })
       .subscribe((status) => {
           // 객체 자체를 찍으면 브라우저 콘솔에서 [object Object]로 보일 수 있으므로 문자열로 찍기
-          console.log(`[Chat-Flow] Subscription Status (${chat.name}):`, status);
       })
     
     return () => { 
-        console.log(`[Chat-Flow] Unsubscribing from ${chat.name}`);
         supabase.removeChannel(channel);
     }
   }, [user, chat.id, chat.type, membershipData?.joinedAt]) // 가입 정보가 바뀌면(방장 권한 획득 등) 재구독 하는 것이 안전함
@@ -123,7 +119,6 @@ export function useMessages(
   // 메시지 전송 로직
   const handleSendMessage = async (content: string, anonNickname: string) => {
     if (!user || !content.trim()) return
-    console.log(`[Chat-Flow] Sending:`, content);
 
     try {
       const insertData: any = {
@@ -142,7 +137,6 @@ export function useMessages(
       const { error } = await supabase.from('direct_messages').insert(insertData)
       if (error) throw error
       
-      console.log(`[Chat-Flow] Send Success.`);
       
       // [핵심] 전송 직후 캐시 강제 무효화 -> 내가 보낸 메시지 즉시 로드
       await queryClient.invalidateQueries({ queryKey: ["messages", chat.type, chat.id] })

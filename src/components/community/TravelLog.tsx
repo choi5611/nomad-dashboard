@@ -22,7 +22,6 @@ export default function TravelLog({ userId, compact = false }: TravelLogProps) {
           .eq('user_id', userId)
 
         if (!visitError && visitData) {
-          console.log("[TravelLog-Debug] visitData from DB:", visitData);
           const { data: cityData } = await supabase.from('cities').select('name, display_name, country_code')
           
           const enrichedVisits = visitData.map(v => ({

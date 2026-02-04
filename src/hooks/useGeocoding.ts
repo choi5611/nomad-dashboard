@@ -14,7 +14,6 @@ export function useGeocoding() {
       const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=10&lang=en`)
       const data = await res.json()
       
-      console.log("🔍 Photon API Raw Data:", data)
 
       const mappedResults: City[] = (data.features || [])
         .map((f: any) => {
@@ -35,7 +34,6 @@ export function useGeocoding() {
           }
         })
 
-      console.log("✅ Final Mapped Results:", mappedResults)
       setResults(mappedResults)
       return mappedResults
     } catch (error) {

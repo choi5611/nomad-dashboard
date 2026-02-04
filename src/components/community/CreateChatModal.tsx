@@ -62,11 +62,7 @@ export default function CreateChatModal({ isOpen, onClose, user, onSuccess, init
       }
 
       if (isEditMode) {
-        console.log('Attempting to update chat_rooms:', {
-          roomId: initialData.id,
-          roomData,
-          userId: user.id
-        })
+      
 
         const { data: updateResult, error: updateError } = await supabase
           .from('chat_rooms')
@@ -74,7 +70,6 @@ export default function CreateChatModal({ isOpen, onClose, user, onSuccess, init
           .eq('id', initialData.id)
           .select()
 
-        console.log('chat_rooms update result:', { updateResult, updateError })
 
         if (updateError) {
           console.error('chat_rooms update failed:', updateError)
@@ -83,7 +78,7 @@ export default function CreateChatModal({ isOpen, onClose, user, onSuccess, init
 
         if (!updateResult || updateResult.length === 0) {
           console.error('No rows updated in chat_rooms - possible RLS issue')
-          toast.error("채팅방 이름 수정 실패: 권한이 없습니다. 개설자만 수정할 수 있습니다.")
+          toast.error("개설자만 수정할 수 있습니다.")
           return
         }
 
@@ -95,7 +90,11 @@ export default function CreateChatModal({ isOpen, onClose, user, onSuccess, init
           .eq('user_id', user.id)
           .select()
 
-        console.log('room_members update result:', { memberUpdateResult, memberError })
+        if (memberError) {
+          console.error('room_members update failed:', memberError)
+          throw memberError
+        }
+          
 
         toast.success("방 정보가 수정되었습니다!")
         onSuccess(initialData.id, name.trim(), isOpenChat)

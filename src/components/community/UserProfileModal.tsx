@@ -56,7 +56,6 @@ export default function UserProfileModal({ userId, isOpen, onClose }: UserProfil
           table: 'profiles',
           filter: `id.eq.${userId}`
         }, (payload) => {
-          console.log("👤 Profile Updated Real-time:", payload.new)
           setProfile(payload.new)
         })
         .subscribe()

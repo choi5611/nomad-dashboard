@@ -10,11 +10,9 @@ const STATIC_CACHE_URLS = [
 
 // 설치 이벤트 - 서비스 워커 설치 시
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing...')
 
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching static assets')
       return cache.addAll(STATIC_CACHE_URLS)
     })
   )
@@ -25,14 +23,12 @@ self.addEventListener('install', (event) => {
 
 // 활성화 이벤트 - 오래된 캐시 정리
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activating...')
 
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheName !== CACHE_NAME) {
-            console.log('[Service Worker] Deleting old cache:', cacheName)
             return caches.delete(cacheName)
           }
         })
@@ -82,7 +78,6 @@ self.addEventListener('fetch', (event) => {
 
 // 푸시 알림 수신 이벤트 (향후 구현)
 self.addEventListener('push', (event) => {
-  console.log('[Service Worker] Push received')
 
   const options = {
     body: event.data ? event.data.text() : 'New notification',
@@ -102,7 +97,6 @@ self.addEventListener('push', (event) => {
 
 // 알림 클릭 이벤트
 self.addEventListener('notificationclick', (event) => {
-  console.log('[Service Worker] Notification clicked')
   event.notification.close()
 
   event.waitUntil(

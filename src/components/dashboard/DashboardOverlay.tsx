@@ -103,13 +103,11 @@ export default function DashboardOverlay() {
       )
 
       if (existingMatch) {
-        console.log(`🤖 Auto-merging: "${city.name}" matches existing city "${existingMatch.name}"`)
         city = existingMatch
         isNew = false // 기존 핀으로 전환
       }
     }
 
-    console.log("📍 Selecting City:", city.name, isNew ? "(New Discovery)" : "(Existing)")
     
     if (isNew) {
       setDiscoveredCity(city)

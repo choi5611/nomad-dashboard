@@ -20,7 +20,6 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
         return { isCreator: false, joinedAt: new Date(0).toISOString(), memberInfo: null }
       }
 
-      console.group(`[CMS-Debug] Membership Check for Room: ${chat.name} (${chat.id})`);
       // 방 정보(생성자, 공개 여부)와 멤버십 정보 병렬 조회
       const [roomResult, memberResult] = await Promise.all([
         supabase.from('chat_rooms').select('created_by, is_open').eq('id', chat.id).maybeSingle(), // single() 대신 maybeSingle()로 안전하게 조회
@@ -31,24 +30,17 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
       const isOpenChat = roomResult.data?.is_open
       const memberInfo = memberResult.data
       
-      console.log(' - Room Creator ID:', roomResult.data?.created_by);
-      console.log(' - Is Open Chat?:', isOpenChat);
-      console.log(' - Current User ID:', userId);
-      console.log(' - Is User Creator?:', isCreator);
-      console.log(' - Member Joined At:', memberInfo?.created_at);
 
       let joinedAt = new Date().toISOString()
 
       // 생성자이거나, 비밀 그룹방(is_open=false)인 경우 히스토리 전체 공개 (동기화 문제 해결을 위한 조치)
       if (isCreator || isOpenChat === false) {
         joinedAt = new Date(0).toISOString() 
-        console.log(' - Final Result: History Unlocked (Creator or Private Group).');
       } else if (memberInfo && memberInfo.created_at) {
         const date = new Date(memberInfo.created_at)
         // 1시간 버퍼
         date.setHours(date.getHours() - 1)
         joinedAt = date.toISOString()
-        console.log(' - Final Result: MEMBER detected. History filtered by join time.');
       } else {
         console.warn(' - Final Result: NO MEMBERSHIP found. History locked to NULL.');
       }
@@ -74,7 +66,6 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
       // 비밀 그룹방 + 멤버인 경우, 캐시가 꼬일 수 있으므로 확실한 과거 시간으로 재설정
       const joinedAt = membershipData?.joinedAt || new Date(0).toISOString()
       
-      console.log(`[CMS-Debug] Querying ${chat.name} since ${joinedAt}`);
 
       let data, error, count
 
@@ -102,7 +93,6 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
         error = result.error
         count = result.count
         
-        console.log(`[CMS-Debug] Query Result: ${data?.length || 0} messages found in DB.`);
       }
 
       if (error) {

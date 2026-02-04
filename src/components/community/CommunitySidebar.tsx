@@ -222,7 +222,6 @@ export default function CommunitySidebar() {
       {/* Content Area */}
       <PullToRefresh 
         onRefresh={async () => {
-          console.log("🔄 Pull-to-refresh triggered, resetting posts...")
           await queryClient.refetchQueries({ queryKey: ["posts"] })
         }}
         className="h-[calc(100%-120.5px)]"
@@ -249,7 +248,6 @@ export default function CommunitySidebar() {
                     typeIcon={TypeIcon} 
                     typeLabel={typeLabel} 
                     onDelete={async () => {
-                      console.log("♻️ Post deleted, resetting all post queries for fresh data...")
                       await queryClient.resetQueries({ queryKey: ["posts"] })
                       // 만약 가상 뷰 싱크가 느릴 경우를 대비해 1초 뒤 한 번 더 무효화
                       setTimeout(() => queryClient.invalidateQueries({ queryKey: ["posts"] }), 1000)
