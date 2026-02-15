@@ -100,20 +100,18 @@ export default function ImageViewer({
             </div>
           )}
 
-          {/* Main Image */}
+          {/* Main Content */}
           <div 
             className="relative w-full h-full max-w-7xl max-h-[90vh] flex items-center justify-center p-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <motion.img
+            <motion.div
               key={currentIndex}
-              src={images[currentIndex]}
-              alt={`View ${currentIndex + 1}`}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              className="w-full h-full flex items-center justify-center"
               drag="y"
               dragConstraints={{ top: 0, bottom: 0 }}
               dragElastic={0.2}
@@ -122,7 +120,32 @@ export default function ImageViewer({
                   onClose()
                 }
               }}
-            />
+            >
+              {(() => {
+                const url = images[currentIndex]
+                const isVideo = url.toLowerCase().match(/\.(mp4|mov|webm|ogv|m4v)/) || url.includes('/post-videos/')
+
+                if (isVideo) {
+                  return (
+                    <video
+                      src={url}
+                      className="max-w-full max-h-full rounded-lg shadow-2xl"
+                      controls
+                      autoPlay
+                      playsInline
+                      loop
+                    />
+                  )
+                }
+                return (
+                  <img
+                    src={url}
+                    alt={`View ${currentIndex + 1}`}
+                    className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+                  />
+                )
+              })()}
+            </motion.div>
           </div>
         </motion.div>
       )}
