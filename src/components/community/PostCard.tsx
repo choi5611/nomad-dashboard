@@ -130,6 +130,7 @@ const PostCard = memo(function PostCard({
         showComments={showComments}
         onToggleLike={toggleLike}
         onToggleComments={() => setShowComments(!showComments)}
+        content={post.content}
       />
 
       {/* Comment Section */}

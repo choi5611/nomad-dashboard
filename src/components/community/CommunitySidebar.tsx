@@ -10,6 +10,7 @@ import UserSearchList from "./UserSearchList"
 import { useQueryClient } from "@tanstack/react-query"
 import PullToRefresh from "./PullToRefresh"
 import LeaderboardModal from "./LeaderboardModal"
+import { useDebounce } from "@/hooks/useDebounce"
 
 const typeIcons = {
   experience: Building2,
@@ -50,6 +51,9 @@ export default function CommunitySidebar() {
   
   const { ref, inView } = useInView()
   
+  // Search Debounce (300ms)
+  const debouncedSearchQuery = useDebounce(searchQuery, 300)
+
   const { 
     data, 
     fetchNextPage, 
@@ -60,7 +64,7 @@ export default function CommunitySidebar() {
     category: activeTab, 
     cityId: selectedCity?.name?.toLowerCase(),
     hashtag: selectedTag,
-    searchQuery: searchQuery
+    searchQuery: debouncedSearchQuery
   })
 
   const navigationTarget = useStore((state) => state.navigationTarget)
