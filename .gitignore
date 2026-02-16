@@ -28,8 +28,3 @@ todo.*
 
 # Test files
 vitest.config.ts
-src/test/
-**/*.test.ts
-**/*.test.tsx
-**/*.spec.ts
-**/*.spec.tsx
