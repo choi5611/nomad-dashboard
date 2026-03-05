@@ -9,12 +9,15 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Call Supabase REST API
+      - name: Ping Supabase with write query
         run: |
           curl -sSf \
+            -X PATCH \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "$SUPABASE_URL/rest/v1/cities?select=id&limit=1"
+            -H "Content-Type: application/json" \
+            -d "{\"pinged_at\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\"}" \
+            "$SUPABASE_URL/rest/v1/keep_alive?id=eq.1"
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
