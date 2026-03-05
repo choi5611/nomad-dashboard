@@ -2,7 +2,7 @@ name: Ping Supabase
 
 on:
   schedule:
-    - cron: "0 0 */3 * *" # 3일마다 한 번 (UTC 기준 자정)
+    - cron: "0 0 * * *" # 매일 (UTC 기준 자정)
   workflow_dispatch: {}     # 필요하면 수동 실행 버튼
 
 jobs:
@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Call Supabase REST API
         run: |
-          curl -sS \
+          curl -sSf \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
             "$SUPABASE_URL/rest/v1/cities?select=id&limit=1"
