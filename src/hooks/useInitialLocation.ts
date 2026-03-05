@@ -20,7 +20,7 @@ export function useInitialLocation(user: any) {
     let detectedCountry = ""
 
     try {
-      const res = await fetch("https://ipwho.is/")
+      const res = await fetch("https://ipwho.is/", { referrerPolicy: "no-referrer" })
       const data = await res.json()
       if (data && data.country_code) {
         detectedCountry = data.country_code
