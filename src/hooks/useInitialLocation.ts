@@ -21,6 +21,7 @@ export function useInitialLocation(user: any) {
 
     try {
       const res = await fetch("https://ipapi.co/json/")
+      if (!res.ok) throw new Error("ip api failed")
       const data = await res.json()
       if (data && data.country_code) {
         detectedCountry = data.country_code
