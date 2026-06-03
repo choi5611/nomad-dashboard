@@ -40,7 +40,7 @@ export default function ExchangeRateWidget({ targetCurrency }: ExchangeRateWidge
       setUnsupported(false)
       try {
         const response = await axios.get(
-          `https://api.frankfurter.app/latest?from=${baseCurrency}&to=${targetCurrency}`
+          `https://api.frankfurter.dev/v1/latest?from=${baseCurrency}&to=${targetCurrency}`
         )
         setRate(response.data.rates[targetCurrency])
       } catch (error) {
