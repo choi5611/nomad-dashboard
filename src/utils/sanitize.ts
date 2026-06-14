@@ -29,7 +29,7 @@ export function sanitizeSearchQuery(query: string): string {
 
   return query
     .replace(/javascript\s*:/gi, '') // javascript: 프로토콜 제거 (공백 포함)
-    .replace(/[<>\"']/g, '') // 위험한 문자 제거
+    .replace(/[<>"']/g, '') // 위험한 문자 제거
     .replace(/script/gi, '') // script 단어 제거 (대소문자 무관)
     .replace(/on\w+=/gi, '') // 이벤트 핸들러 제거 (onClick, onLoad 등)
     .trim()

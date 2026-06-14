@@ -79,14 +79,22 @@ const PostCard = memo(function PostCard({
     onDelete
   })
 
-  // 알림 등으로 인한 네비게이션 처리
-  useEffect(() => {
+  // 알림 네비게이션: 댓글 펼치기는 렌더 단계 조정으로 처리
+  const [prevNavTarget, setPrevNavTarget] = useState(navigationTarget)
+  if (navigationTarget !== prevNavTarget) {
+    setPrevNavTarget(navigationTarget)
     if (navigationTarget?.postId === post.id) {
       setShowComments(true)
-      // 약간의 지연을 주어 UI가 확장된 후 스크롤되도록 함
-      setTimeout(() => {
+    }
+  }
+
+  // 스크롤은 side effect이므로 effect에서 처리 (UI 확장 후 스크롤되도록 지연)
+  useEffect(() => {
+    if (navigationTarget?.postId === post.id) {
+      const t = setTimeout(() => {
         cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }, 100)
+      return () => clearTimeout(t)
     }
   }, [navigationTarget, post.id])
 

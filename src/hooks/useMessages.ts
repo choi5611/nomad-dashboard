@@ -78,7 +78,6 @@ export function useMessages(
 
         if (!newMessage.sender) {
           const { data: p } = await supabase.from('profiles').select('username, avatar_url, country_code').eq('id', senderId!).single()
-          // @ts-ignore - sender 구조 맞추기 (임시)
           if (p) newMessage.sender = p
         }
 

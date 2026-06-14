@@ -29,6 +29,13 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
   const [isPreviewOpen, setIsPreviewOpen] = useState(false) // 정보 모달용
   const [roomData, setRoomData] = useState<ChatRoom | null>(null)
   const [memberIds, setMemberIds] = useState<string[]>([])
+  // 헤더에 표시할 채팅방 이름 (프롭 직접 변형 대신 로컬 상태로 관리)
+  const [displayName, setDisplayName] = useState(chat.name)
+  const [prevChatId, setPrevChatId] = useState(chat.id)
+  if (chat.id !== prevChatId) {
+    setPrevChatId(chat.id)
+    setDisplayName(chat.name)
+  }
   const { friends } = useFriends(user, profile)
   const previousScrollHeightRef = useRef<number>(0)
   const previousScrollTopRef = useRef<number>(0)
@@ -53,6 +60,7 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 방 정보 비동기 fetch (채팅 변경 시 setState는 await 이후)
     fetchRoomInfo()
   }, [chat.id, chat.type])
 
@@ -118,7 +126,7 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
   return (
     <div className={`flex-1 flex flex-col overflow-hidden ${isThemeAmber ? 'bg-amber-950/20' : 'bg-slate-900/50'}`}>
       <ChatHeader
-        chat={chat}
+        chat={{ ...chat, name: displayName }}
         anonNickname={anonNickname}
         onBack={onBack}
         onLeave={chat.type !== 'dm' ? () => setIsLeaveModalOpen(true) : undefined}
@@ -167,7 +175,7 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
         user={user}
         initialData={roomData}
         onSuccess={async (_, name, __) => {
-          chat.name = name
+          setDisplayName(name)
           setIsEditModalOpen(false)
           await fetchRoomInfo()
         }}

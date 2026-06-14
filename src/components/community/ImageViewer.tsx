@@ -18,12 +18,25 @@ export default function ImageViewer({
 }: ImageViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
 
-  // Reset index when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setCurrentIndex(initialIndex)
+  // Reset index when modal opens (effect 대신 렌더 단계 조정 패턴)
+  const [lastResetKey, setLastResetKey] = useState<string | null>(null)
+  const resetKey = isOpen ? `${initialIndex}` : "closed"
+  if (resetKey !== lastResetKey) {
+    setLastResetKey(resetKey)
+    if (isOpen) setCurrentIndex(initialIndex)
+  }
+
+  const nextImage = () => {
+    if (currentIndex < images.length - 1) {
+      setCurrentIndex(prev => prev + 1)
     }
-  }, [isOpen, initialIndex])
+  }
+
+  const prevImage = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1)
+    }
+  }
 
   // Keyboard navigation
   useEffect(() => {
@@ -38,18 +51,6 @@ export default function ImageViewer({
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [isOpen, currentIndex])
-
-  const nextImage = () => {
-    if (currentIndex < images.length - 1) {
-      setCurrentIndex(prev => prev + 1)
-    }
-  }
-
-  const prevImage = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1)
-    }
-  }
 
   if (!isOpen) return null
 

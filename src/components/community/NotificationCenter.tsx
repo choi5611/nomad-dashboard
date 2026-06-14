@@ -31,6 +31,26 @@ export default function NotificationCenter() {
   useEffect(() => {
     if (!user) return
 
+    const fetchNotifications = async () => {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select(`
+          *,
+          sender_profile:profiles!notifications_sender_id_fkey(username, avatar_url)
+        `)
+        .eq("receiver_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20)
+
+      if (error) {
+        console.error("Notifications fetch error:", error)
+        return
+      }
+
+      setNotifications(data || [])
+      setUnreadCount(data?.filter(n => !n.is_read).length || 0)
+    }
+
     fetchNotifications()
 
     // 실시간 알림 구독
@@ -72,36 +92,15 @@ export default function NotificationCenter() {
     }
   }, [user])
 
-  const fetchNotifications = async () => {
-    if (!user) return
-    const { data, error } = await supabase
-      .from("notifications")
-      .select(`
-        *,
-        sender_profile:profiles!notifications_sender_id_fkey(username, avatar_url)
-      `)
-      .eq("receiver_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(20)
-
-    if (error) {
-      console.error("Notifications fetch error:", error)
-      return
-    }
-
-    setNotifications(data || [])
-    setUnreadCount(data?.filter(n => !n.is_read).length || 0)
-  }
-
   const markAsRead = async (id?: string) => {
     if (!user) return
     
-    const query = supabase.from("notifications").update({ is_read: true })
-    
+    let query = supabase.from("notifications").update({ is_read: true })
+
     if (id) {
-      query.eq("id", id)
+      query = query.eq("id", id)
     } else {
-      query.eq("receiver_id", user.id).eq("is_read", false)
+      query = query.eq("receiver_id", user.id).eq("is_read", false)
     }
 
     const { error } = await query

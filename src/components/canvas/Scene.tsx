@@ -28,10 +28,10 @@ function SceneContent() {
     if (!cameraControlsRef.current) return
 
     // 기본 카메라 위치 (지구로부터 거리 12)
-    let distance = 12
+    const distance = 12
     let targetX = 0
-    let targetY = 0
-    let targetZ = 0
+    const targetY = 0
+    const targetZ = 0
 
     if (selectedCity) {
       const pos = getPositionFromLatLon(selectedCity.lat, selectedCity.lng)

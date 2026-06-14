@@ -39,7 +39,11 @@ export function useInitialLocation(user: any) {
 
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
-        supabase.from("profiles").update({ country_code: detectedCountry }).eq("id", session.user.id).then()
+        const { error } = await supabase
+          .from("profiles")
+          .update({ country_code: detectedCountry })
+          .eq("id", session.user.id)
+        if (error) console.error("Failed to update country_code:", error)
       }
     } else {
       setHasDetectedLocation(true)
@@ -49,10 +53,11 @@ export function useInitialLocation(user: any) {
   const updateUserLocation = useCallback(async (userId: string) => {
     const cached = sessionStorage.getItem("nomad_location_detected")
     if (cached) {
-      await supabase.from("profiles").update({ country_code: cached }).eq("id", userId)
+      const { error } = await supabase.from("profiles").update({ country_code: cached }).eq("id", userId)
+      if (error) console.error("Failed to update country_code:", error)
       return
     }
-    detectAndSetInitialLocation()
+    await detectAndSetInitialLocation()
   }, [detectAndSetInitialLocation])
 
   // 초기 실행 로직

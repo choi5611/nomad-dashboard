@@ -68,14 +68,16 @@ export default function CommunitySidebar() {
   })
 
   const navigationTarget = useStore((state) => state.navigationTarget)
-
-  useEffect(() => {
+  const [prevNavTarget, setPrevNavTarget] = useState(navigationTarget)
+  // 네비게이션 발생 시 필터 초기화 (effect 대신 렌더 단계 조정 패턴)
+  if (navigationTarget !== prevNavTarget) {
+    setPrevNavTarget(navigationTarget)
     if (navigationTarget) {
       setActiveTab("all")
       setSelectedTag(null)
       setSearchQuery("")
     }
-  }, [navigationTarget])
+  }
 
   useEffect(() => {
     if (inView && hasNextPage) {

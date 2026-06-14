@@ -30,8 +30,5 @@ export default defineConfig([
         }
       ]
     },
-    plugins: {
-      "@typescript-eslint": tseslint,
-    },
   },
 ])

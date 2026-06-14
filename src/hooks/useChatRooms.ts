@@ -13,10 +13,15 @@ export function useChatRooms(user: User | null) {
     if (!user) return
 
     // 1. 내가 멤버로 속한 방 ID들 + custom_name 가져오기
-    const { data: memberData } = await supabase
+    const { data: memberData, error: memberError } = await supabase
       .from('room_members')
       .select('room_id, custom_name')
       .eq('user_id', user.id)
+
+    if (memberError) {
+      console.error('Error fetching room members:', memberError)
+      return
+    }
 
     if (!memberData || memberData.length === 0) {
       setChatRooms([])

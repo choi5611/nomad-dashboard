@@ -17,6 +17,10 @@ export default function GlobalActivityTicker() {
   const [events, setEvents] = useState<ActivityEvent[]>([])
   const [currentEventIndex, setCurrentEventIndex] = useState(0)
 
+  const addEvent = (event: ActivityEvent) => {
+    setEvents(prev => [event, ...prev].slice(0, 5))
+  }
+
   useEffect(() => {
     let isMounted = true
 
@@ -94,10 +98,6 @@ export default function GlobalActivityTicker() {
     }
   }, [])
 
-  const addEvent = (event: ActivityEvent) => {
-    setEvents(prev => [event, ...prev].slice(0, 5))
-  }
-
   useEffect(() => {
     if (events.length <= 1) return
     const interval = setInterval(() => {
@@ -106,10 +106,13 @@ export default function GlobalActivityTicker() {
     return () => clearInterval(interval)
   }, [events.length])
 
-  // Reset index if events change drastically
-  useEffect(() => {
+  // Reset index if events change drastically (effect 대신 렌더 단계 조정 패턴)
+  const isEmpty = events.length === 0
+  const [wasEmpty, setWasEmpty] = useState(isEmpty)
+  if (isEmpty !== wasEmpty) {
+    setWasEmpty(isEmpty)
     setCurrentEventIndex(0)
-  }, [events.length === 0])
+  }
 
   const currentEvent = events[currentEventIndex]
 

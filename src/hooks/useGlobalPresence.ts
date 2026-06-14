@@ -21,11 +21,9 @@ export function useGlobalPresence() {
         const newState = channel.presenceState()
         const currentCount = Object.keys(newState).length
         realCountRef.current = currentCount
-        
-        // 처음 구독했을 때는 즉시 숫자를 보여줌
-        if (displayCount === 0 && currentCount > 0) {
-          setDisplayCount(currentCount)
-        }
+
+        // 처음 구독했을 때는 즉시 숫자를 보여줌 (이후엔 5분 인터벌이 갱신)
+        setDisplayCount(prev => (prev === 0 && currentCount > 0 ? currentCount : prev))
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -41,16 +39,14 @@ export function useGlobalPresence() {
 
     // 5분에 한 번씩만 UI 숫자를 갱신 (사용자 요청: 너무 자주 바뀌면 어지러움 방지)
     const interval = setInterval(() => {
-      if (realCountRef.current !== displayCount) {
-        setDisplayCount(realCountRef.current)
-      }
+      setDisplayCount(realCountRef.current)
     }, 5 * 60 * 1000)
 
     return () => {
       supabase.removeChannel(channel)
       clearInterval(interval)
     }
-  }, [user?.id, displayCount])
+  }, [user?.id, profile?.is_stealth_mode])
 
   return displayCount
 }

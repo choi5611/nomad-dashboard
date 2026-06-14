@@ -192,10 +192,15 @@ export const useStore = create<AppState>((set, get) => ({
   joinedRooms: [],
   fetchJoinedRooms: async (userId: string) => {
     try {
-      const { data: memberData } = await supabase
+      const { data: memberData, error: memberError } = await supabase
         .from('room_members')
         .select('room_id, custom_name')
         .eq('user_id', userId)
+
+      if (memberError) {
+        console.error('Error fetching joined rooms:', memberError)
+        return
+      }
 
       if (!memberData || memberData.length === 0) {
         set({ joinedRooms: [] })
