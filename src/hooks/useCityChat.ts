@@ -19,6 +19,8 @@ export function useCityChat(
   const [isFetchingNextPage, setIsFetchingNextPage] = useState(false)
   const pageRef = useRef(0)
   const bufferRef = useRef<CityMessage[]>([])
+  // 초기 로드 완료 전 버퍼 flush 금지 (init의 setMessages가 실시간 메시지를 덮어쓰는 race 방지)
+  const initDoneRef = useRef(false)
 
   // 초기 메시지 및 이전 페이지 가져오기
   const fetchMessages = useCallback(async (page: number) => {
@@ -47,6 +49,10 @@ export function useCityChat(
   useEffect(() => {
     if (!cityName) return
 
+    // 도시 변경 시 이전 도시의 미처리 버퍼가 새 도시로 흘러들지 않도록 초기화
+    initDoneRef.current = false
+    bufferRef.current = []
+
     const init = async () => {
       setLoading(true)
       pageRef.current = 0
@@ -54,6 +60,7 @@ export function useCityChat(
       setMessages([...initialData].reverse())
       setHasNextPage(initialData.length === PAGE_SIZE)
       setLoading(false)
+      initDoneRef.current = true
     }
 
     init()
@@ -74,9 +81,11 @@ export function useCityChat(
           event: "INSERT",
           schema: "public",
           table: "messages",
-          filter: `city_id=eq.${cityName.toLowerCase()}`
+          // 서버 필터 미사용: "new york"처럼 공백 포함 city_id는 필터 파싱이 실패해
+          // 실시간 수신이 조용히 끊긴다. 전체 수신 후 아래에서 city_id 매칭.
         },
         async (payload) => {
+          if (payload.new.city_id !== cityName.toLowerCase()) return
           if (payload.new.author_id === user?.id) return
 
           const { data } = await supabase
@@ -103,7 +112,7 @@ export function useCityChat(
       })
 
     const timer = setInterval(() => {
-      if (bufferRef.current.length > 0) {
+      if (initDoneRef.current && bufferRef.current.length > 0) {
         setMessages((prev) => {
           const existingIds = new Set(prev.map(m => m.id))
           const uniqueNewMessages = bufferRef.current.filter(m => !existingIds.has(m.id))

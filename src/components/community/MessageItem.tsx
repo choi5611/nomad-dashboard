@@ -25,7 +25,9 @@ export default function MessageItem({ message, isOwn, isThemeAmber }: MessageIte
     )
   }
 
-  const senderProfile = message.sender || (message.profiles as any)
+  // 익명(라운지) 메시지는 실명 프로필을 절대 사용하지 않는다
+  // (히스토리 쿼리가 sender를 join해 오므로, 여기서 걸러야 실명 아바타/국가가 노출되지 않음)
+  const senderProfile = message.is_anonymous ? null : (message.sender || (message.profiles as any))
   const username = senderProfile?.username || message.nickname || 'Unknown'
   const avatarUrl = senderProfile?.avatar_url
   const countryCode = senderProfile?.country_code

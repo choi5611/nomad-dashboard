@@ -62,24 +62,9 @@ export function useRealtimeSync(user: any) {
       })
       .subscribe()
 
-    // Group Chat Notifications (Legacy/Separate table if used)
-    const groupChannel = supabase.channel('global-group-tracker')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages' }, (payload) => {
-        const { isChatOpen, activeChat, activeTab, joinedRooms } = useStore.getState()
-        if (payload.new.user_id !== currentUserId) {
-             const room = joinedRooms.find(r => r.id === payload.new.room_id)
-             if (!room) return
-
-             const isVisible = isChatOpen && activeTab === 'friends' && activeChat?.id === payload.new.room_id
-             if (!isVisible) incrementUnread('room', payload.new.room_id)
-        }
-      })
-      .subscribe()
-
     return () => {
       supabase.removeChannel(cityChannel)
       supabase.removeChannel(dmChannel)
-      supabase.removeChannel(groupChannel)
     }
   }, [user])
 }

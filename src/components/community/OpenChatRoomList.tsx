@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Sparkles, Plus, Loader2, Search } from "lucide-react";
 import OpenChatRoomItem from "./OpenChatRoomItem";
 import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 import type { ChatRoom } from "@/types/friend";
 import type { User } from "@supabase/supabase-js";
 import CreateChatModal from "./CreateChatModal";
@@ -107,20 +108,20 @@ export default function OpenChatRoomList({
   const handleJoin = async (roomId: string, roomName: string) => {
     if (!user) return;
 
-    try {
-      // room_members에 추가 (이미 있으면 ignore)
-      await supabase
-        .from("room_members")
-        .insert({ room_id: roomId, user_id: user.id })
-        .select();
+    // room_members에 추가 — 중복 가입(23505)만 통과, 그 외 실패 시 입장 중단
+    // (멤버십 없이 입장하면 히스토리가 잠긴 빈 방으로 보임)
+    const { error } = await supabase
+      .from("room_members")
+      .insert({ room_id: roomId, user_id: user.id });
 
-      // 에러가 나더라도 (이미 있는 경우 등) 입장은 진행
-      setIsPreviewOpen(false);
-      onRoomClick(roomId, roomName);
-    } catch (err) {
-      console.error("Join error:", err);
-      onRoomClick(roomId, roomName);
+    if (error && error.code !== "23505") {
+      console.error("Join error:", error);
+      toast.error("입장 실패: " + error.message);
+      return;
     }
+
+    setIsPreviewOpen(false);
+    onRoomClick(roomId, roomName);
   };
 
   const filteredRooms = rooms.filter(

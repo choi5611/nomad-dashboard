@@ -26,6 +26,7 @@ export default function MessageInput({ chat, anonNickname, onSend }: MessageInpu
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
+          maxLength={1000}
           placeholder={chat.type === 'open' ? `${anonNickname}(으)로 메시지 보내기...` : "Send an encrypted message..."}
           autoFocus
           className={`w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-3 text-white placeholder:text-white/20 focus:outline-none transition-all font-mono text-xs ${

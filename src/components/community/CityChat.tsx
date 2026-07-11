@@ -155,6 +155,7 @@ export default function CityChat({
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
+            maxLength={1000}
             placeholder="Enter message..."
             className="w-full bg-white/5 border border-white/10 rounded-xl pl-4 pr-12 py-3 text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/50 transition-all font-mono text-sm leading-none"
             disabled={disabled}

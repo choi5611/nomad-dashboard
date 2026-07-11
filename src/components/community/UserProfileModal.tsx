@@ -35,13 +35,15 @@ export default function UserProfileModal({ userId, isOpen, onClose }: UserProfil
       setActiveTab('bio') // 모달 열릴 때 탭 초기화
 
       // 1. 실시간 친구 상태 구독
+      // Realtime 필터는 or/and 복합식을 지원하지 않아(구독이 조용히 실패) 필터 없이 수신.
+      // DELETE 이벤트는 payload.old에 PK만 담겨 컬럼 매칭이 불가하므로, 이벤트마다
+      // 단건 재조회(fetchData)로 상태를 동기화한다 (모달이 열려 있는 동안만 구독).
       const friendshipChannel = supabase
         .channel(`profile-friendship-${userId}`)
         .on('postgres_changes', {
           event: '*',
           schema: 'public',
-          table: 'friendships',
-          filter: `or(and(user_id.eq.${currentUser?.id},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${currentUser?.id}))`
+          table: 'friendships'
         }, () => {
           fetchData()
         })

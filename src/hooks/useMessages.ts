@@ -7,12 +7,7 @@ import { useInfiniteMessages } from "./useInfiniteMessages"
 import type { ChatInfo, DMMessage } from "@/types/message"
 import type { User } from "@supabase/supabase-js"
 
-export function useMessages(
-  chat: ChatInfo,
-  user: User | null,
-  // profile 매개변수 제거 (안 씀)
-  scrollToBottom: () => void
-) {
+export function useMessages(chat: ChatInfo, user: User | null) {
   const queryClient = useQueryClient()
   // 실시간으로 들어오는 메시지를 담는 버퍼 (캐시와 별개로 관리)
   const [realtimeBuffer, setRealtimeBuffer] = useState<DMMessage[]>([])
@@ -76,7 +71,8 @@ export function useMessages(
         }
 
 
-        if (!newMessage.sender) {
+        // 익명(라운지) 메시지는 실명 프로필을 붙이지 않는다 — 아바타/국가코드로 익명성이 깨짐
+        if (!newMessage.sender && !newMessage.is_anonymous) {
           const { data: p } = await supabase.from('profiles').select('username, avatar_url, country_code').eq('id', senderId!).single()
           if (p) newMessage.sender = p
         }
@@ -92,14 +88,8 @@ export function useMessages(
         }
         
         // 캐시도 같이 갱신하여 데이터 정합성 유지
+        // (스크롤은 useScrollBehavior가 messages 변화를 감지해 처리)
         queryClient.invalidateQueries({ queryKey: ["messages", chat.type, chat.id] })
-        
-        // 스크롤 이동
-        setTimeout(() => {
-            if (typeof scrollToBottom === 'function') {
-                scrollToBottom()
-            }
-        }, 100)
       })
       .subscribe(() => {
           // 객체 자체를 찍으면 브라우저 콘솔에서 [object Object]로 보일 수 있으므로 문자열로 찍기
@@ -118,6 +108,12 @@ export function useMessages(
   // 메시지 전송 로직
   const handleSendMessage = async (content: string, anonNickname: string) => {
     if (!user || !content.trim()) return
+
+    // MessageItem이 '[SYSTEM]' 접두 메시지를 시스템 공지로 렌더링하므로 위장 입력 차단
+    if (content.trimStart().startsWith('[SYSTEM]')) {
+      toast.error("사용할 수 없는 메시지 형식입니다.")
+      return
+    }
 
     try {
       const insertData: any = {

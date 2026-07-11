@@ -49,9 +49,10 @@ export default function InviteFriendsModal({
         user_id: userId
       }))
 
+      // 한 명이라도 이미 멤버면 insert 전체가 unique 위반으로 실패하므로 중복은 무시
       const { error } = await supabase
         .from('room_members')
-        .insert(newMembers)
+        .upsert(newMembers, { onConflict: 'room_id,user_id', ignoreDuplicates: true })
 
       if (error) throw error
 
