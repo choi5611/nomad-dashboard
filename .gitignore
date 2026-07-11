@@ -25,6 +25,7 @@ dist-ssr
 .env
 todo.*
 .claude
+.mcp.json
 
 # Test files
 vitest.config.ts
