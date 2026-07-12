@@ -31,8 +31,7 @@ export function useCommentSubmit(postId: string, postAuthorId: string) {
 
       if (error) throw error
 
-      // XP 보상 (+5 XP)
-      await supabase.rpc('increment_xp', { user_id: user.id, amount: 5 })
+      // XP 보상(+5)은 comments INSERT 트리거(award_xp_on_comment)가 서버에서 지급
       useAuth.getState().fetchProfile(user.id)
 
       // 알림 로직

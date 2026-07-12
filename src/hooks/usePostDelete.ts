@@ -43,13 +43,12 @@ export function usePostDelete({ postId, authorId, onDelete }: UsePostDeleteProps
       }
 
 
-      // 2. XP 환수 (-10 XP) - 어뷰징 방지
-      // 이 부분은 실패해도 게시글 삭제 자체를 되돌리진 않음 (선택적)
+      // 2. XP 환수(-10)는 posts DELETE 트리거(reclaim_xp_on_post_delete)가 서버에서 처리.
+      // UI 갱신 실패는 게시글 삭제를 되돌리지 않음 (다음 로드 시 반영)
       try {
-        await supabase.rpc('increment_xp', { user_id: user.id, amount: -10 })
-        useAuth.getState().fetchProfile(user.id)
+        await useAuth.getState().fetchProfile(user.id)
       } catch (xpError) {
-        console.warn("XP decrement failed:", xpError)
+        console.warn("Profile refresh after delete failed:", xpError)
       }
 
       toast.success("게시글이 삭제되었습니다.")

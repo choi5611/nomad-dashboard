@@ -173,12 +173,7 @@ export const useStore = create<AppState>((set, get) => ({
 
       if (error) throw error
       
-      // 🏆 최초 발견자 보너스 보상 (+100 XP)
-      const user = (await supabase.auth.getUser()).data.user
-      if (user) {
-        await supabase.rpc('increment_xp', { user_id: user.id, amount: 100 })
-        // useAuth.getState().fetchProfile(user.id) // UI 갱신 (이미 WritePostForm에서 함)
-      }
+      // 🏆 최초 발견자 보너스(+100)는 cities INSERT 트리거(award_xp_on_city)가 서버에서 지급
 
       // 상태 갱신
       await useStore.getState().fetchCities()

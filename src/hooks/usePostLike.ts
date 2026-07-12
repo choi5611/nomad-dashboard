@@ -58,11 +58,9 @@ export function usePostLike(postId: string, postAuthorId: string, user: User | n
           .insert({ post_id: postId, user_id: user.id })
         if (error) throw error
 
-        // 작성자에게 XP 보상 - 내가 내 글에 누른 게 아닐 때만
+        // 좋아요 XP 보상(+2)은 likes INSERT 트리거(award_xp_on_like)가 서버에서 지급
+        // 작성자에게 알림 - 내가 내 글에 누른 게 아닐 때만
         if (postAuthorId !== user.id) {
-          await supabase.rpc('increment_xp', { user_id: postAuthorId, amount: 2 })
-
-          // 알림 보내기
           await supabase.from("notifications").insert({
             receiver_id: postAuthorId,
             sender_id: user.id,

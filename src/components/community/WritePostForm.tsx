@@ -125,8 +125,7 @@ export default function WritePostForm({ onClose, onPostCreate, tabs }: WritePost
 
       if (error) throw error
       
-      // 3. XP 보상 (+10 XP)
-      await supabase.rpc('increment_xp', { user_id: user.id, amount: 10 })
+      // XP 보상(+10)은 posts INSERT 트리거(award_xp_on_post)가 서버에서 지급
       useAuth.getState().fetchProfile(user.id)
 
       toast.success("게시글이 성공적으로 등록되었습니다! (+10 XP)")
