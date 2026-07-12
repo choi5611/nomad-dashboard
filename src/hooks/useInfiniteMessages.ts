@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
 import type { ChatInfo } from "@/types/message"
@@ -6,12 +5,9 @@ import type { ChatInfo } from "@/types/message"
 const PAGE_SIZE = 30
 
 export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) {
-  // [강제 리프레시] 컴포넌트 마운트 시마다 새로운 ID 생성 -> 캐시 무시하고 서버 조회
-  const [mountId] = useState(() => Date.now())
-
   // 1. 멤버십 및 방 정보 우선 조회
   const { data: membershipData, isSuccess: isMembershipLoaded } = useQuery({
-    queryKey: ['chatMembership', chat.id, userId, mountId], // 여기도 mountId 추가
+    queryKey: ['chatMembership', chat.id, userId],
     queryFn: async () => {
       if (!userId || !chat.id) return null
 
@@ -55,8 +51,7 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
 
   // 2. 메시지 조회 (멤버십 정보가 로드된 후에만 실행)
   const query = useInfiniteQuery({
-    // [긴급 수정] mountId를 추가하여 방에 들어올 때마다 무조건 새로운 쿼리로 인식시킴 (캐시 무효화)
-    queryKey: ["messages", chat.type, chat.id, membershipData?.joinedAt, membershipData?.isCreator, mountId],
+    queryKey: ["messages", chat.type, chat.id, membershipData?.joinedAt, membershipData?.isCreator],
     queryFn: async ({ pageParam = 0 }) => {
       if (!userId) throw new Error("User not authenticated")
 
@@ -109,6 +104,8 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 0,
     enabled: !!userId && !!chat.id && (chat.type === 'dm' || isMembershipLoaded),
+    // 캐시된 메시지를 즉시 보여주고, 마운트 시 백그라운드에서 최신 데이터로 갱신
+    staleTime: 0,
   })
 
   return {

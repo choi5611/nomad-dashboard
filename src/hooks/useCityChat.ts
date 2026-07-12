@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
+import { useInfiniteQuery } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import type { CityMessage } from "@/types/city-chat"
@@ -7,66 +8,78 @@ import type { Profile } from "@/types/profile"
 
 const PAGE_SIZE = 30
 
+async function fetchCityMessages(cityId: string, page: number) {
+  const from = page * PAGE_SIZE
+  const to = from + PAGE_SIZE - 1
+
+  const { data, error } = await supabase
+    .from("messages")
+    .select("*, profiles(username, avatar_url, country_code)")
+    .eq("city_id", cityId)
+    .order("created_at", { ascending: false })
+    .range(from, to)
+
+  if (error) {
+    console.error("Chat fetch error:", error)
+    throw error
+  }
+
+  return (data || []) as CityMessage[]
+}
+
 export function useCityChat(
   cityName: string | undefined,
   user: User | null,
   profile: Profile | null
 ) {
-  const [messages, setMessages] = useState<CityMessage[]>([])
+  const cityId = cityName?.toLowerCase()
+
   const [onlineCount, setOnlineCount] = useState(1)
-  const [loading, setLoading] = useState(true)
-  const [hasNextPage, setHasNextPage] = useState(true)
-  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false)
-  const pageRef = useRef(0)
+  // 실시간/낙관적 메시지 (캐시된 히스토리와 별개로 관리)
+  const [realtimeMessages, setRealtimeMessages] = useState<CityMessage[]>([])
   const bufferRef = useRef<CityMessage[]>([])
-  // 초기 로드 완료 전 버퍼 flush 금지 (init의 setMessages가 실시간 메시지를 덮어쓰는 race 방지)
-  const initDoneRef = useRef(false)
 
-  // 초기 메시지 및 이전 페이지 가져오기
-  const fetchMessages = useCallback(async (page: number) => {
-    if (!cityName) return []
-    
-    const from = page * PAGE_SIZE
-    const to = from + PAGE_SIZE - 1
+  // 1. 히스토리 로드 (도시별 캐싱 — 재방문 시 캐시 즉시 표시 후 백그라운드 갱신)
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery({
+    queryKey: ["cityMessages", cityId],
+    queryFn: ({ pageParam }) => fetchCityMessages(cityId!, pageParam as number),
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.length === PAGE_SIZE ? allPages.length : undefined,
+    initialPageParam: 0,
+    enabled: !!cityId,
+    staleTime: 0,
+  })
 
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*, profiles(username, avatar_url, country_code)")
-      .eq("city_id", cityName.toLowerCase())
-      .order("created_at", { ascending: false })
-      .range(from, to)
-
-    if (error) {
-      console.error("Chat fetch error:", error)
-      toast.error("메시지를 불러오지 못했습니다.")
-      return []
+  // 2. 히스토리(내림차순 페이지) + 실시간 버퍼 병합, 중복 제거 후 시간순 정렬
+  const messages = useMemo(() => {
+    const history = data?.pages.flat() ?? []
+    const uniqueMap = new Map<string, CityMessage>()
+    for (const m of [...history].reverse()) uniqueMap.set(m.id, m)
+    for (const m of realtimeMessages) {
+      if (!uniqueMap.has(m.id)) uniqueMap.set(m.id, m)
     }
+    return Array.from(uniqueMap.values()).sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    )
+  }, [data, realtimeMessages])
 
-    return data || []
-  }, [cityName])
-
-  // 초기 로드
+  // 도시 변경 시 이전 도시의 실시간 메시지/버퍼 초기화
   useEffect(() => {
-    if (!cityName) return
-
-    // 도시 변경 시 이전 도시의 미처리 버퍼가 새 도시로 흘러들지 않도록 초기화
-    initDoneRef.current = false
     bufferRef.current = []
+    setRealtimeMessages([])
+  }, [cityId])
 
-    const init = async () => {
-      setLoading(true)
-      pageRef.current = 0
-      const initialData = await fetchMessages(0)
-      setMessages([...initialData].reverse())
-      setHasNextPage(initialData.length === PAGE_SIZE)
-      setLoading(false)
-      initDoneRef.current = true
-    }
+  // 3. 실시간 구독 + 프레즌스
+  useEffect(() => {
+    if (!cityId) return
 
-    init()
-
-    // 리얼시간 구독
-    const channel = supabase.channel(`chat:${cityName.toLowerCase()}`, {
+    const channel = supabase.channel(`chat:${cityId}`, {
       config: {
         presence: {
           key: user?.id || 'anonymous-' + Math.random().toString(36).substring(7),
@@ -85,7 +98,7 @@ export function useCityChat(
           // 실시간 수신이 조용히 끊긴다. 전체 수신 후 아래에서 city_id 매칭.
         },
         async (payload) => {
-          if (payload.new.city_id !== cityName.toLowerCase()) return
+          if (payload.new.city_id !== cityId) return
           if (payload.new.author_id === user?.id) return
 
           const { data } = await supabase
@@ -111,19 +124,17 @@ export function useCityChat(
         }
       })
 
+    // 200ms 배치 flush (렌더 폭주 방지)
     const timer = setInterval(() => {
-      if (initDoneRef.current && bufferRef.current.length > 0) {
-        setMessages((prev) => {
-          const existingIds = new Set(prev.map(m => m.id))
-          const uniqueNewMessages = bufferRef.current.filter(m => !existingIds.has(m.id))
-          if (uniqueNewMessages.length === 0) {
-            bufferRef.current = []
-            return prev
-          }
-          const next = [...prev, ...uniqueNewMessages]
-          return next
-        })
+      if (bufferRef.current.length > 0) {
+        const flushed = bufferRef.current
         bufferRef.current = []
+        setRealtimeMessages((prev) => {
+          const existingIds = new Set(prev.map(m => m.id))
+          const uniqueNewMessages = flushed.filter(m => !existingIds.has(m.id))
+          if (uniqueNewMessages.length === 0) return prev
+          return [...prev, ...uniqueNewMessages]
+        })
       }
     }, 200)
 
@@ -131,63 +142,62 @@ export function useCityChat(
       supabase.removeChannel(channel)
       clearInterval(timer)
     }
-  }, [cityName, user?.id, fetchMessages])
-
-  const fetchNextPage = async () => {
-    if (!hasNextPage || isFetchingNextPage || !cityName) return
-    
-    setIsFetchingNextPage(true)
-    const nextPage = pageRef.current + 1
-    const nextData = await fetchMessages(nextPage)
-    
-    if (nextData.length > 0) {
-      setMessages(prev => [...[...nextData].reverse(), ...prev])
-      pageRef.current = nextPage
-    }
-    
-    setHasNextPage(nextData.length === PAGE_SIZE)
-    setIsFetchingNextPage(false)
-  }
+  }, [cityId, user?.id])
 
   const handleSendMessage = async (content: string) => {
-    if (!user || !content.trim() || !cityName) return
+    if (!user || !content.trim() || !cityId) return
 
     const tempId = Math.random().toString(36).substring(7)
+    const senderProfile = {
+      username: profile?.username || user.email?.split('@')[0] || 'Unknown',
+      avatar_url: profile?.avatar_url || '',
+      country_code: profile?.country_code || 'KR'
+    }
     const optimisticMessage: CityMessage = {
       id: tempId,
       content,
       author_id: user.id,
-      city_id: cityName.toLowerCase(),
+      city_id: cityId,
       created_at: new Date().toISOString(),
-      profiles: {
-        username: profile?.username || user.email?.split('@')[0] || 'Unknown',
-        avatar_url: profile?.avatar_url || '',
-        country_code: profile?.country_code || 'KR'
-      }
+      profiles: senderProfile
     }
 
-    setMessages(prev => [...prev, optimisticMessage])
+    setRealtimeMessages(prev => [...prev, optimisticMessage])
 
     try {
-      const { error } = await supabase.from("messages").insert({
-        content,
-        author_id: user.id,
-        city_id: cityName.toLowerCase(),
-      })
+      const { data: inserted, error } = await supabase
+        .from("messages")
+        .insert({
+          content,
+          author_id: user.id,
+          city_id: cityId,
+        })
+        .select()
+        .single()
       if (error) throw error
+
+      // 임시 메시지를 실제 DB 행으로 교체 (캐시 갱신 시 중복 방지)
+      setRealtimeMessages(prev =>
+        prev.map(m => m.id === tempId ? { ...inserted, profiles: senderProfile } as CityMessage : m)
+      )
     } catch {
-      setMessages(prev => prev.filter(m => m.id !== tempId))
+      setRealtimeMessages(prev => prev.filter(m => m.id !== tempId))
       toast.error("전송 실패")
     }
+  }
+
+  const handleFetchNextPage = async () => {
+    if (!hasNextPage || isFetchingNextPage) return
+    await fetchNextPage()
   }
 
   return {
     messages,
     onlineCount,
-    loading,
+    loading: isLoading,
     hasNextPage,
     isFetchingNextPage,
-    fetchNextPage,
+    fetchNextPage: handleFetchNextPage,
     handleSendMessage
   }
 }
