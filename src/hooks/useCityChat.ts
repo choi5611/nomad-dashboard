@@ -3,7 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import type { CityMessage } from "@/types/city-chat"
-import type { User } from "@supabase/supabase-js"
+import type { RealtimeChannel, User } from "@supabase/supabase-js"
 import type { Profile } from "@/types/profile"
 
 const PAGE_SIZE = 30
@@ -82,11 +82,18 @@ export function useCityChat(
     userIdRef.current = user?.id
   }, [user?.id])
 
+  // 스텔스 모드면 도시 접속자 수에서도 빠진다 (전역 접속자 수와 같은 규칙)
+  const isStealth = !!user && !!profile?.is_stealth_mode
+  const isStealthRef = useRef(isStealth)
+  const channelRef = useRef<RealtimeChannel | null>(null)
+  const joinedRef = useRef(false)
+
   // 3. 실시간 구독 + 프레즌스
   useEffect(() => {
     if (!cityId) return
 
     const channel = supabase.channel(`chat:${cityId}`)
+    channelRef.current = channel
 
     channel
       .on(
@@ -118,11 +125,9 @@ export function useCityChat(
         setOnlineCount(count)
       })
       .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({
-            online_at: new Date().toISOString(),
-          })
-        }
+        if (status !== 'SUBSCRIBED') return
+        joinedRef.current = true
+        if (!isStealthRef.current) await channel.track({ online_at: new Date().toISOString() })
       })
 
     // 200ms 배치 flush (렌더 폭주 방지)
@@ -140,10 +145,21 @@ export function useCityChat(
     }, 200)
 
     return () => {
+      channelRef.current = null
+      joinedRef.current = false
       supabase.removeChannel(channel)
       clearInterval(timer)
     }
   }, [cityId])
+
+  // 스텔스 설정이 바뀌면 채널은 그대로 두고 트래킹만 켜고 끈다
+  useEffect(() => {
+    isStealthRef.current = isStealth
+    const channel = channelRef.current
+    if (!channel || !joinedRef.current) return
+    if (isStealth) channel.untrack()
+    else channel.track({ online_at: new Date().toISOString() })
+  }, [isStealth])
 
   const handleSendMessage = async (content: string) => {
     if (!user || !content.trim() || !cityId) return
