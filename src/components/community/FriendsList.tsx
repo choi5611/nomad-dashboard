@@ -131,14 +131,13 @@ export default function FriendsList() {
     handleCreateGroup
   } = useFriends(user, profile)
 
+  const chatRooms = useStore((state) => state.joinedRooms)
   const {
-    chatRooms,
     editingRoomId,
     setEditingRoomId,
     editingName,
     setEditingName,
-    handleUpdateRoomName,
-    fetchChatRooms
+    handleUpdateRoomName
   } = useChatRooms(user)
 
   if (loading) return (
@@ -177,7 +176,7 @@ export default function FriendsList() {
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-between">
           <p className="text-[10px] text-indigo-300 font-bold uppercase">{selectedIds.length}명 선택됨</p>
           <button
-            onClick={() => handleCreateGroup(fetchChatRooms)}
+            onClick={() => handleCreateGroup(() => useStore.getState().fetchJoinedRooms(user.id))}
             disabled={selectedIds.length === 0 || isCreating}
             className="px-4 py-1.5 bg-indigo-500 text-white text-[10px] font-bold rounded-lg"
           >

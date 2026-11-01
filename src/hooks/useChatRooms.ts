@@ -1,56 +1,13 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
-import type { ChatRoom } from "@/types/friend"
+import { useStore } from "@/store/useStore"
 import type { User } from "@supabase/supabase-js"
 
+// 방 목록 자체는 전역 스토어(joinedRooms, useRealtimeSync가 구독·갱신)를 쓰고 여기선 이름 변경만 다룬다
 export function useChatRooms(user: User | null) {
-  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([])
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState("")
-
-  const fetchChatRooms = async () => {
-    if (!user) return
-
-    // 1. 내가 멤버로 속한 방 ID들 + custom_name 가져오기
-    const { data: memberData, error: memberError } = await supabase
-      .from('room_members')
-      .select('room_id, custom_name')
-      .eq('user_id', user.id)
-
-    if (memberError) {
-      console.error('Error fetching room members:', memberError)
-      return
-    }
-
-    if (!memberData || memberData.length === 0) {
-      setChatRooms([])
-      return
-    }
-
-    const roomIds = memberData.map(r => r.room_id)
-    const customNames = new Map(memberData.map(r => [r.room_id, r.custom_name]))
-
-    // 2. 방 정보 가져오기 (is_open 포함 전체 데이터)
-    const { data: rooms, error } = await supabase
-      .from('chat_rooms')
-      .select('*')
-      .in('id', roomIds)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching rooms:', error)
-      return
-    }
-
-    // 3. 데이터 병합
-    const roomsWithCustomName = (rooms || []).map(room => ({
-      ...room,
-      custom_name: customNames.get(room.id) || null
-    }))
-
-    setChatRooms(roomsWithCustomName)
-  }
 
   const handleUpdateRoomName = async (roomId: string) => {
     if (!user || !editingName.trim()) {
@@ -71,49 +28,18 @@ export function useChatRooms(user: User | null) {
       toast.success("채팅방 이름이 변경되었습니다!")
       setEditingRoomId(null)
       setEditingName("")
-      fetchChatRooms()
+      useStore.getState().fetchJoinedRooms(user.id)
     } catch (err: any) {
       console.error('❌ Update error:', err)
       toast.error("이름 변경 실패: " + err.message)
     }
   }
 
-  useEffect(() => {
-    if (!user) return
-
-    fetchChatRooms()
-
-    const roomChannel = supabase
-      .channel('room_changes_tracking')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'room_members', 
-        filter: `user_id=eq.${user.id}` 
-      }, () => {
-        fetchChatRooms()
-        // 전역 참여 목록 데이터도 갱신 유도
-        import('@/store/useStore').then(m => m.useStore.getState().fetchJoinedRooms(user.id))
-      })
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'chat_rooms' 
-      }, () => fetchChatRooms())
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(roomChannel)
-    }
-  }, [user])
-
   return {
-    chatRooms,
     editingRoomId,
     setEditingRoomId,
     editingName,
     setEditingName,
-    handleUpdateRoomName,
-    fetchChatRooms
+    handleUpdateRoomName
   }
 }

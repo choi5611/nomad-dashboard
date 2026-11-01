@@ -209,6 +209,7 @@ export const useStore = create<AppState>((set, get) => ({
         .from('chat_rooms')
         .select('*')
         .in('id', roomIds)
+        .order('created_at', { ascending: false })
 
       if (rooms) {
         const roomsWithCustomName = rooms.map(room => ({
