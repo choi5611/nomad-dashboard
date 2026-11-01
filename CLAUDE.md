@@ -75,6 +75,7 @@ npx tsc -b            # 타입 체크만 (빌드 없이)
 - Supabase 프로젝트 필요. `.env`에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` 설정 (둘 다 클라이언트에 노출됨)
 - 별도 백엔드 서버/프록시 없음 — 브라우저가 Supabase에 직접 연결
 - Realtime은 다음 테이블에서 활성화: `messages`, `direct_messages`, `room_members`, `chat_rooms`
+- **DB 변경**: `supabase/migrations/`에 새 파일(`YYYYMMDDHHMMSS_이름.sql`)을 추가 → main에 머지되면 CI(`migrate` job)가 운영 DB에 적용. 이미 머지된 파일은 고치지 말고 새 파일로
 
 ## 아키텍처 핵심
 

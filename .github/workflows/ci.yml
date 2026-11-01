@@ -32,3 +32,35 @@ jobs:
           name: playwright-results
           path: test-results/
           retention-days: 7
+
+  migrate:
+    # main에 새로 들어온 supabase/migrations/*.sql만 운영 DB에 적용 (검사 통과 후, 한 번에 하나씩)
+    # shortcut: Supabase의 마이그레이션 기록 테이블에는 남기지 않음(git 기록이 이력), supabase CLI db push로 바꾸려면 기록 repair 필요
+    needs: checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: db-migrate
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply new migrations
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::warning::SUPABASE_DB_URL secret이 없어 마이그레이션을 건너뜀"
+            exit 0
+          fi
+          files=$(git diff --name-only --diff-filter=A "$BEFORE" "$GITHUB_SHA" -- 'supabase/migrations/*.sql' | sort)
+          if [ -z "$files" ]; then
+            echo "새 마이그레이션 없음"
+            exit 0
+          fi
+          for f in $files; do
+            echo "적용: $f"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -f "$f"
+          done
