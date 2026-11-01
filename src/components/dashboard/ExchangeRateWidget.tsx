@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react"
 import { GlassCard, CardHeader, CardTitle, CardContent } from "@/components/dashboard/GlassCard"
 import { DollarSign, Loader2, TrendingUp, AlertCircle } from "lucide-react"
-import axios from "axios"
 import AnimatedNumber from "@/components/ui/AnimatedNumber"
 
 interface ExchangeRateWidgetProps {
@@ -39,10 +38,12 @@ export default function ExchangeRateWidget({ targetCurrency }: ExchangeRateWidge
       setLoading(true)
       setUnsupported(false)
       try {
-        const response = await axios.get(
+        const res = await fetch(
           `https://api.frankfurter.dev/v1/latest?from=${baseCurrency}&to=${targetCurrency}`
         )
-        setRate(response.data.rates[targetCurrency])
+        if (!res.ok) throw new Error(`exchange rate ${res.status}`)
+        const data = await res.json()
+        setRate(data.rates[targetCurrency])
       } catch (error) {
         console.error("Failed to fetch exchange rate", error)
         setRate(null)

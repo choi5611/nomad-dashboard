@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react"
-import axios from "axios"
 
 interface WeatherData {
   temperature: number
@@ -14,10 +13,12 @@ export function useWeather(lat: number, lng: number) {
     async function fetchWeather() {
       setLoading(true)
       try {
-        const response = await axios.get(
+        const res = await fetch(
           `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`
         )
-        setWeather(response.data.current_weather)
+        if (!res.ok) throw new Error(`weather ${res.status}`)
+        const data = await res.json()
+        setWeather(data.current_weather)
       } catch (error) {
         console.error("Failed to fetch weather", error)
       } finally {
