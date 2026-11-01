@@ -34,10 +34,9 @@ export function useRealtimeSync(user: any) {
     const cityChannel = supabase.channel('global-chat-tracker')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
         const { isChatOpen, selectedCity, activeTab } = useStore.getState()
-        if (payload.new.author_id !== currentUserId) {
-           const isVisible = isChatOpen && activeTab === 'city' && selectedCity?.name.toLowerCase() === payload.new.city_id
-           if (!isVisible) incrementUnread('city')
-        }
+        // 내가 보고 있는 도시의 남의 메시지만 센다 (다른 도시 메시지는 City Hub에 보이지 않음)
+        if (payload.new.author_id === currentUserId || payload.new.city_id !== selectedCity?.name.toLowerCase()) return
+        if (!(isChatOpen && activeTab === 'city')) incrementUnread('city')
       })
       .subscribe()
 
