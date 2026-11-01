@@ -62,21 +62,20 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
       const joinedAt = membershipData?.joinedAt || new Date(0).toISOString()
       
 
-      let data, error, count
+      let data, error
 
       if (chat.type === 'dm') {
         const result = await supabase
           .from('direct_messages')
-          .select('*, sender:profiles!sender_id(username, avatar_url, country_code)', { count: "exact" })
+          .select('*, sender:profiles!sender_id(username, avatar_url, country_code)')
           .or(`and(sender_id.eq.${userId},receiver_id.eq.${chat.id}),and(sender_id.eq.${chat.id},receiver_id.eq.${userId})`)
           .order('created_at', { ascending: false })
           .range(from, to)
 
         data = result.data
         error = result.error
-        count = result.count
       } else {
-        const queryBuilder = supabase.from('direct_messages').select('*, sender:profiles!sender_id(username, avatar_url)', { count: "exact" })
+        const queryBuilder = supabase.from('direct_messages').select('*, sender:profiles!sender_id(username, avatar_url)')
 
         const result = await queryBuilder
           .eq('room_id', chat.id)
@@ -86,7 +85,6 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
 
         data = result.data
         error = result.error
-        count = result.count
         
       }
 
@@ -98,7 +96,6 @@ export function useInfiniteMessages(chat: ChatInfo, userId: string | undefined) 
       return {
         messages: (data || []) as any[],
         nextPage: (data && data.length === PAGE_SIZE) ? (pageParam as number) + 1 : undefined,
-        totalCount: count || 0
       }
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
