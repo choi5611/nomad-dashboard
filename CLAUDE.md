@@ -12,9 +12,8 @@ WebGL(Three.js) 지구본 위에 도시 핀을 렌더링하고, Supabase Realtim
 - **서버 상태**: TanStack Query v5 (캐싱, 무한 스크롤, 캐시 무효화)
 - **백엔드**: Supabase (PostgreSQL + Auth + Realtime CDC) — `src/lib/supabase.ts`
 - **3D**: Three.js + @react-three/fiber + @react-three/drei
-- **라우팅**: React Router v7
 - **스타일링**: Tailwind CSS 3 + shadcn/ui (`components.json`, `src/components/ui/`)
-- **애니메이션**: Framer Motion · **차트**: Recharts · **토스트**: Sonner · **아이콘**: lucide-react
+- **애니메이션**: Framer Motion · **토스트**: Sonner · **아이콘**: lucide-react
 - **테스트**: Vitest + React Testing Library + jsdom
 - **패키지 매니저**: npm
 - **경로 별칭**: `@` → `src/` (vite.config.ts, tsconfig)
