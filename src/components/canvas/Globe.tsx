@@ -152,14 +152,6 @@ export default function Globe({ onSelectPin }: GlobeProps) {
          />
       </mesh>
 
-      {/* 디버그용 중심점 (정확히 아프리카 좌측 하단 기니만 부근이어야 함) */}
-      <Pin 
-        lat={0} 
-        lng={0} 
-        label="EQUATOR/MERIDIAN" 
-        onSelect={() => {}}
-      />
-      
       {/* 위치 핀들 */}
       {visibleCities.map((city) => (
         <Pin 
