@@ -1,5 +1,6 @@
 // Nomad Dashboard Service Worker
-const CACHE_NAME = 'nomad-dashboard-v1'
+// v2: v1에 저장된 Supabase API 응답(DM 등)을 activate 단계에서 지우기 위해 올림
+const CACHE_NAME = 'nomad-dashboard-v2'
 const OFFLINE_URL = '/offline.html'
 
 // 캐싱할 핵심 리소스
@@ -42,8 +43,8 @@ self.addEventListener('activate', (event) => {
 
 // Fetch 이벤트 - 네트워크 요청 처리
 self.addEventListener('fetch', (event) => {
-  // POST 요청은 캐싱하지 않음
-  if (event.request.method !== 'GET') {
+  // GET + 같은 출처만 처리 (Supabase API 등 외부 응답, 특히 개인 데이터는 캐시하지 않음)
+  if (event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) {
     return
   }
 
@@ -68,7 +69,7 @@ self.addEventListener('fetch', (event) => {
           }
 
           // HTML 요청이고 캐시도 없으면 오프라인 페이지 반환
-          if (event.request.headers.get('accept').includes('text/html')) {
+          if (event.request.headers.get('accept')?.includes('text/html')) {
             return caches.match(OFFLINE_URL)
           }
         })
