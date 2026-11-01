@@ -34,10 +34,9 @@ function App() {
 
   // 4. 세션 관리
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-    })
-
+    // 초기 세션은 onAuthStateChange의 INITIAL_SESSION 이벤트로 받는다.
+    // (getSession()을 따로 부르면 인증 락을 한 번 더 기다리고, 느린 기기에서 락 대기가 10초를 넘으면
+    //  잡히지 않은 AbortError가 됐음)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       if (_event === 'SIGNED_OUT') {

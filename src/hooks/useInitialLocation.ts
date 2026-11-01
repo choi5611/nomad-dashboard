@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import { useStore } from "@/store/useStore"
+import { useAuth } from "@/store/useAuth"
 
 export function useInitialLocation(user: any) {
   const [hasDetectedLocation, setHasDetectedLocation] = useState(false)
@@ -37,12 +38,13 @@ export function useInitialLocation(user: any) {
       sessionStorage.setItem("nomad_location_detected", detectedCountry)
       applyLocation(detectedCountry)
 
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
+      // 로그인 사용자는 스토어에서 읽는다 (getSession()은 인증 락을 다시 기다려 느린 기기에서 시간 초과로 실패)
+      const currentUser = useAuth.getState().user
+      if (currentUser) {
         const { error } = await supabase
           .from("profiles")
           .update({ country_code: detectedCountry })
-          .eq("id", session.user.id)
+          .eq("id", currentUser.id)
         if (error) console.error("Failed to update country_code:", error)
       }
     } else {
