@@ -24,13 +24,19 @@ export function useInfinitePosts({
 }: UseInfinitePostsProps) {
   return useInfiniteQuery({
     queryKey: ["posts", category, cityId, hashtag, searchQuery, authorId, likedByUserId],
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async ({ pageParam }) => {
       // 일반 posts 테이블 대신, 댓글까지 합쳐진 searchable_posts 뷰를 조회합니다.
+      // 커서 방식: 마지막 글보다 오래된 글만 가져와서, 스크롤 중 새 글이 올라와도 같은 글이 두 번 나오지 않음
+      // shortcut: created_at이 완전히 같은 두 글이 페이지 경계에 걸리면 하나가 빠짐, 문제되면 (created_at, id) 커서로 교체
       let query = supabase
         .from("searchable_posts")
         .select("*")
         .order("created_at", { ascending: false })
-        .range(pageParam * POSTS_PER_PAGE, (pageParam + 1) * POSTS_PER_PAGE - 1)
+        .limit(POSTS_PER_PAGE)
+
+      if (pageParam) {
+        query = query.lt("created_at", pageParam)
+      }
 
       if (cityId) {
         query = query.eq("city_id", cityId.toLowerCase())
@@ -87,10 +93,10 @@ export function useInfinitePosts({
         // likes_count, comments_count는 뷰에서 이미 숫자로 제공됨
       }))
     },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      // 만약 마지막 페이지 데이터가 POSTS_PER_PAGE보다 적으면 더 이상 데이터가 없는 것
-      return lastPage.length === POSTS_PER_PAGE ? allPages.length : undefined
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => {
+      // 마지막 페이지가 POSTS_PER_PAGE보다 적으면 더 이상 데이터가 없는 것
+      return lastPage.length === POSTS_PER_PAGE ? lastPage[lastPage.length - 1].created_at : undefined
     },
   })
 }
