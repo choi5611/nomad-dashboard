@@ -13,6 +13,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery"
 import MobileNav from "@/components/layout/MobileNav"
 import { useInitialLocation } from "@/hooks/useInitialLocation"
 import { useRealtimeSync } from "@/hooks/useRealtimeSync"
+import { ErrorBoundary } from "@/components/common/ErrorBoundary"
 
 function App() {
   const setSession = useAuth((state) => state.setSession)
@@ -55,7 +56,10 @@ function App() {
 
   return (
     <div className={`relative w-full h-screen overflow-hidden bg-black text-white ${isMobile ? 'pb-[72px]' : ''}`}>
-      <Scene />
+      {/* 지구본(WebGL·텍스처) 오류가 피드·채팅까지 앱 전체를 내리지 않도록 따로 감쌈 */}
+      <ErrorBoundary fallback={<div className="absolute inset-0 bg-black" />}>
+        <Scene />
+      </ErrorBoundary>
       <DashboardOverlay />
       <CommunitySidebar />
       <ChatSidebar />

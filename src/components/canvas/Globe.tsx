@@ -69,10 +69,11 @@ export default function Globe({ onSelectPin }: GlobeProps) {
   const [cameraDistance, setCameraDistance] = useState(20)
 
   // 텍스처 로드
+  // three.js examples(MIT) 텍스처를 public/textures에 복사해 직접 서빙 (외부 저장소 변경에 영향받지 않게)
   const [colorMap, normalMap, specularMap] = useTexture([
-    'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg',
-    'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_normal_2048.jpg',
-    'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_specular_2048.jpg'
+    '/textures/earth_atmos_2048.jpg',
+    '/textures/earth_normal_2048.jpg',
+    '/textures/earth_specular_2048.jpg'
   ])
 
   // 현재 줌 레벨에 따라 보여줄 핀 필터링
