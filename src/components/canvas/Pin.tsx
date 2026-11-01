@@ -10,11 +10,10 @@ interface PinProps {
   lng: number
   label: string
   activityCount?: number
-  occludeRef?: React.RefObject<THREE.Object3D | null>
   onSelect?: (pos: THREE.Vector3) => void
 }
 
-export default function Pin({ lat, lng, label, activityCount = 0, occludeRef, onSelect }: PinProps) {
+export default function Pin({ lat, lng, label, activityCount = 0, onSelect }: PinProps) {
   const groupRef = useRef<THREE.Group>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const glowRef = useRef<THREE.Mesh>(null)
@@ -91,9 +90,9 @@ export default function Pin({ lat, lng, label, activityCount = 0, occludeRef, on
       </mesh>
 
       {/* 3. HTML 라벨 & 아이콘 */}
+      {/* occlude(핀마다 매 프레임 레이캐스트)는 쓰지 않음 — 위 useFrame의 내적 검사가 지구 뒤편 핀을 이미 숨김 */}
       <Html 
         distanceFactor={8} 
-        occlude={occludeRef ? [occludeRef as React.RefObject<THREE.Object3D>] : true} 
         center 
         style={{ pointerEvents: 'none' }}
       >

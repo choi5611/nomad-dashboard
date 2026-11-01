@@ -160,7 +160,6 @@ export default function Globe({ onSelectPin }: GlobeProps) {
           lng={city.lng} 
           label={cameraDistance > 25 ? (COUNTRY_NAMES[city.countryCode] || city.name) : city.name} 
           activityCount={activities[city.name.toLowerCase()] || 0}
-          occludeRef={globeRef}
           onSelect={(pos) => handlePinClick(city, pos)} 
         />
       ))}
