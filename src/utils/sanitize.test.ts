@@ -26,24 +26,19 @@ describe('sanitize utilities', () => {
   })
 
   describe('sanitizeSearchQuery', () => {
-    it('should remove dangerous characters', () => {
-      expect(sanitizeSearchQuery('<script>')).toBe('')
-      expect(sanitizeSearchQuery('hello"world')).toBe('helloworld')
+    it('keeps words that contain "script" and quotes', () => {
+      expect(sanitizeSearchQuery('TypeScript')).toBe('TypeScript')
+      expect(sanitizeSearchQuery('description')).toBe('description')
+      expect(sanitizeSearchQuery("don't")).toBe("don't")
     })
 
-    it('should remove script keywords', () => {
-      expect(sanitizeSearchQuery('javascript:alert(1)')).toBe('alert(1)')
-      expect(sanitizeSearchQuery('SCRIPT')).toBe('')
+    it('trims whitespace', () => {
+      expect(sanitizeSearchQuery('  cafe  ')).toBe('cafe')
     })
 
     it('should limit length to 100 characters', () => {
       const longQuery = 'a'.repeat(150)
       expect(sanitizeSearchQuery(longQuery)).toHaveLength(100)
-    })
-
-    it('should remove event handlers', () => {
-      expect(sanitizeSearchQuery('onClick=alert(1)')).toBe('alert(1)')
-      expect(sanitizeSearchQuery('onLoad=badCode')).toBe('badCode')
     })
   })
 

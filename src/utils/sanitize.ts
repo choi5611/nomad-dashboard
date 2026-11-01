@@ -21,19 +21,13 @@ export function sanitizeText(input: string): string {
 }
 
 /**
- * 검색어를 안전하게 처리
- * SQL Injection 및 XSS를 방어합니다.
+ * 검색어 정리: 앞뒤 공백 제거 + 최대 100자
+ * 값은 supabase-js가 URL 파라미터로 보내고 화면 출력은 React가 이스케이프하므로
+ * 단어를 지우지 않는다 (예전처럼 "script"를 지우면 "TypeScript" → "Type"이 됐음)
  */
 export function sanitizeSearchQuery(query: string): string {
   if (!query) return ''
-
-  return query
-    .replace(/javascript\s*:/gi, '') // javascript: 프로토콜 제거 (공백 포함)
-    .replace(/[<>"']/g, '') // 위험한 문자 제거
-    .replace(/script/gi, '') // script 단어 제거 (대소문자 무관)
-    .replace(/on\w+=/gi, '') // 이벤트 핸들러 제거 (onClick, onLoad 등)
-    .trim()
-    .substring(0, 100) // 최대 길이 제한
+  return query.trim().substring(0, 100)
 }
 
 /**
