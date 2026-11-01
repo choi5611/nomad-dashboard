@@ -60,8 +60,8 @@ export function useMessages(chat: ChatInfo, user: User | null) {
         const newMessage = payload.new as DMMessage
         const senderId = newMessage.sender_id || newMessage.user_id
 
-        // 1. 방 ID 체크 (다른 방 메시지 무시)
-        if (newMessage.room_id && newMessage.room_id !== chat.id) return
+        // 1. 방 ID 체크: DM 화면은 room_id 없는 행만, 방 화면은 이 방 행만 (DM이 방에 섞이지 않게)
+        if ((newMessage.room_id ?? null) !== (chat.type === 'dm' ? null : chat.id)) return
 
         // 2. DM 보안 필터링
         if (chat.type === 'dm') {
