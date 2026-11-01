@@ -29,3 +29,7 @@ todo.*
 
 # Test files
 vitest.config.ts
+
+# Playwright
+test-results/
+playwright-report/

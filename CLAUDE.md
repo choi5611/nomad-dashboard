@@ -50,6 +50,7 @@ npm run lint          # ESLint
 npm run test          # Vitest watch
 npm run test:run      # Vitest 단일 실행
 npm run test:coverage # 커버리지
+npm run test:e2e      # Playwright e2e (dev 서버 자동 실행, 로그인 없이 읽기만 — 운영 Supabase에 쓰는 테스트 금지)
 npx tsc -b            # 타입 체크만 (빌드 없이)
 ```
 
