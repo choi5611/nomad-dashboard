@@ -76,31 +76,3 @@ self.addEventListener('fetch', (event) => {
       })
   )
 })
-
-// 푸시 알림 수신 이벤트 (향후 구현)
-self.addEventListener('push', (event) => {
-
-  const options = {
-    body: event.data ? event.data.text() : 'New notification',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
-    vibrate: [200, 100, 200],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
-    }
-  }
-
-  event.waitUntil(
-    self.registration.showNotification('Nomad Dashboard', options)
-  )
-})
-
-// 알림 클릭 이벤트
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close()
-
-  event.waitUntil(
-    clients.openWindow('/')
-  )
-})

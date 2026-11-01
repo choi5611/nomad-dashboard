@@ -32,9 +32,8 @@ src/
 │   ├── layout/      # MobileNav 등 레이아웃
 │   └── ui/          # shadcn/ui 프리미티브 (button, card 등)
 ├── constants/       # badges 등 상수
-├── data/            # cities 등 정적 데이터
 ├── hooks/           # 커스텀 훅 (useRealtimeSync, useMessages, useCityChat 등)
-├── lib/             # supabase 클라이언트, utils, constants
+├── lib/             # supabase 클라이언트, utils(cn)
 ├── store/           # Zustand 스토어 (useStore, useAuth)
 ├── test/            # 테스트 setup
 ├── types/           # 공유 TypeScript 타입 (db, message, profile 등)
@@ -124,7 +123,7 @@ npx tsc -b            # 타입 체크만 (빌드 없이)
 - **데이터 접근**: `src/lib/supabase.ts`의 `supabase` 클라이언트를 통해서만. 훅(`src/hooks/`)으로 감싸 재사용
 - **실시간**: `supabase.channel(...)` 구독은 `useEffect` cleanup에서 `supabase.removeChannel()`로 반드시 정리
 - **3D(canvas)**: Three.js 객체는 useMemo로 캐싱, 렌더 루프에서 새 객체 생성 금지. 실시간 성능 우선
-- **새니타이즈**: 사용자 생성 콘텐츠는 `src/utils/sanitize.ts` 경유
+- **새니타이즈**: 사용자 생성 콘텐츠는 React 텍스트로만 출력(`dangerouslySetInnerHTML` 금지). 검색어·해시태그는 `src/utils/sanitize.ts` 경유
 
 ## 개발 규칙
 

@@ -11,6 +11,7 @@ import MedalCollection from "../dashboard/MedalCollection"
 import { useInfinitePosts } from "@/hooks/useInfinitePosts"
 import { BADGES } from "@/constants/badges"
 import PostCard from "./PostCard"
+import { getFlagEmoji } from "@/types/city-chat"
 
 interface UserProfileModalProps {
   userId: string
@@ -413,13 +414,4 @@ function ActivityWrapper({ userId }: { userId: string }) {
         ))}
      </div>
    )
-}
-
-function getFlagEmoji(countryCode: string) {
-  if (!countryCode) return ''
-  const codePoints = countryCode
-    .toUpperCase()
-    .split('')
-    .map(char => 127397 + char.charCodeAt(0));
-  return String.fromCodePoint(...codePoints);
 }
