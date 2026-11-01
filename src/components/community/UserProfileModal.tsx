@@ -274,7 +274,12 @@ export default function UserProfileModal({ userId, isOpen, onClose }: UserProfil
                                             <Award className="w-4 h-4 text-cyan-400" />
                                             <h3 className="text-[11px] font-bold text-white uppercase tracking-[0.2em] opacity-60">Earned Medals</h3>
                                         </div>
-                                        <MedalCollection userId={userId} />
+                                        {/* 메달 = 방문 도시 목록이므로 여행 기록 비공개 설정을 똑같이 따른다 */}
+                                        {profile?.is_private_log && currentUser?.id !== userId ? (
+                                            <p className="text-xs text-white/20 italic">This nomad's travel log is private.</p>
+                                        ) : (
+                                            <MedalCollection userId={userId} />
+                                        )}
                                     </div>
                                 </motion.div>
                             )}
