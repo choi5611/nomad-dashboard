@@ -124,38 +124,17 @@ export default function NotificationCenter() {
     setIsOpen(false)
     
     if (n.post_id) {
-      // 1. 포스트의 도시 정보를 가져와서 이동이 필요한지 확인
+      // 1. 포스트의 도시로 이동 (posts.city_id와 cities 사이에 FK가 없어 join 대신 스토어 도시 목록에서 찾음)
       const { data: postData } = await supabase
         .from('posts')
-        .select(`
-          city_id,
-          cities (
-            display_name,
-            lat,
-            lng,
-            timezone,
-            country_code,
-            currency_code
-          )
-        `)
+        .select('city_id')
         .eq('id', n.post_id)
-        .single()
+        .maybeSingle()
 
-      if (postData?.cities) {
-        const cityData = postData.cities as any
-        const city = {
-          name: cityData.display_name,
-          lat: cityData.lat,
-          lng: cityData.lng,
-          timezone: cityData.timezone,
-          countryCode: cityData.country_code,
-          currencyCode: cityData.currency_code
-        }
-
-        // 현재 도시와 다르면 도시 변경
-        if (useStore.getState().selectedCity?.name !== city.name) {
-          useStore.getState().setSelectedCity(city)
-        }
+      const { cities, selectedCity, setSelectedCity } = useStore.getState()
+      const city = cities.find(c => c.name.toLowerCase() === postData?.city_id)
+      if (city && selectedCity?.name !== city.name) {
+        setSelectedCity(city)
       }
 
       setNavigationTarget({ 
