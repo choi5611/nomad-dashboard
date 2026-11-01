@@ -5,6 +5,7 @@ import type { RefObject } from "react"
 
 interface MessageListProps {
   messages: DMMessage[]
+  ownMessageIds?: Set<string> // 익명 라운지에서 내가 쓴 메시지 (sender_id가 비어 있음)
   loading: boolean
   userId: string | undefined
   isThemeAmber: boolean
@@ -19,6 +20,7 @@ interface MessageListProps {
 
 export default function MessageList({
   messages,
+  ownMessageIds,
   loading,
   userId,
   isThemeAmber,
@@ -56,7 +58,7 @@ export default function MessageList({
 
             {messages.map((msg) => {
               const senderId = msg.sender_id || msg.user_id
-              const isOwn = senderId === userId
+              const isOwn = senderId === userId || !!ownMessageIds?.has(msg.id)
 
               return (
                 <MessageItem

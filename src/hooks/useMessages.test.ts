@@ -30,6 +30,7 @@ vi.mock('@/lib/supabase', () => {
 
 vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
+  useQuery: () => ({ data: undefined }),
 }))
 
 vi.mock('./useInfiniteMessages', () => ({

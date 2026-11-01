@@ -67,7 +67,7 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
   // 익명 닉네임 관리
   const anonNickname = useAnonymousNickname(chat.id, chat.type, profile?.country_code)
 
-  const { messages, loading, fetchNextPage, hasNextPage, isFetchingNextPage, handleSendMessage, handleLeaveChat } = useMessages(chat, user)
+  const { messages, ownMessageIds, loading, fetchNextPage, hasNextPage, isFetchingNextPage, handleSendMessage, handleLeaveChat } = useMessages(chat, user)
 
   // 스크롤 동작 관리 (새 메시지 수신 시 스크롤/알림도 messages 변화 감지로 처리)
   const scrollControl = useScrollBehavior(messages, user?.id)
@@ -131,6 +131,7 @@ export default function DirectMessageView({ chat, onBack }: DirectMessageViewPro
 
       <MessageList
         messages={messages}
+        ownMessageIds={ownMessageIds}
         loading={loading}
         userId={user?.id}
         isThemeAmber={isThemeAmber}

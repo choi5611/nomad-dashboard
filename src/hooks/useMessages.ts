@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useStore } from "@/store/useStore"
@@ -97,6 +97,20 @@ export function useMessages(chat: ChatInfo, user: User | null) {
     }
   }, [user, chat.id, chat.type, membershipData?.joinedAt]) // 가입 정보가 바뀌면(방장 권한 획득 등) 재구독 하는 것이 안전함
 
+  // 익명 라운지 메시지는 sender_id가 비어 있으므로, 내가 쓴 메시지 id는 본인만 읽을 수 있는 테이블에서 가져온다
+  const { data: ownMessageIds } = useQuery({
+    queryKey: ["ownAnonMessages", chat.id, user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('anonymous_message_senders')
+        .select('message_id')
+        .eq('room_id', chat.id)
+      if (error) throw error
+      return new Set((data || []).map(r => r.message_id as string))
+    },
+    enabled: chat.type === 'open' && !!user,
+  })
+
   // 방을 바꿀 때마다 실시간 버퍼 초기화
   useEffect(() => {
     setRealtimeBuffer([])
@@ -132,6 +146,7 @@ export function useMessages(chat: ChatInfo, user: User | null) {
       
       // [핵심] 전송 직후 캐시 강제 무효화 -> 내가 보낸 메시지 즉시 로드
       await queryClient.invalidateQueries({ queryKey: ["messages", chat.type, chat.id] })
+      if (chat.type === 'open') queryClient.invalidateQueries({ queryKey: ["ownAnonMessages", chat.id] })
       
     } catch (err: any) {
       console.error(`[Chat-Flow] Send Failed:`, err);
@@ -161,6 +176,7 @@ export function useMessages(chat: ChatInfo, user: User | null) {
 
   return {
     messages,
+    ownMessageIds,
     loading: isLoading,
     fetchNextPage,
     hasNextPage,
