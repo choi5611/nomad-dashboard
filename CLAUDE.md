@@ -38,7 +38,7 @@ src/
 ├── types/           # 공유 TypeScript 타입 (db, message, profile 등)
 └── utils/           # sanitize, rankUtils, cropImage, math 등
 supabase/            # DB 마이그레이션/스키마
-.github/workflows/   # ping-supabase.yml (Supabase 휴면 방지)
+.github/workflows/   # ci.yml (push·PR마다 lint/test/build/e2e), ping-supabase.yml (Supabase 휴면 방지)
 ```
 
 ## 명령어
