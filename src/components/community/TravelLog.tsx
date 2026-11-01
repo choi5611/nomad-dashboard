@@ -26,7 +26,8 @@ export default function TravelLog({ userId, compact = false }: TravelLogProps) {
           
           const enrichedVisits = visitData.map(v => ({
             ...v,
-            city: cityData?.find(c => c.name === v.city_id)
+            // 방문 city_id는 "소문자 표시 이름"(예: "chiang mai")이므로 slug(name)가 아닌 display_name으로 맞춘다
+            city: cityData?.find(c => c.display_name.toLowerCase() === v.city_id)
           })).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
           
           setVisits(enrichedVisits)
