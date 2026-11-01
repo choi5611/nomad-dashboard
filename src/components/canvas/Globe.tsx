@@ -57,6 +57,17 @@ const COUNTRY_NAMES: Record<string, string> = {
   MV: "MALDIVES"
 }
 
+// three.js examples(MIT) 텍스처를 WebP로 변환해 직접 서빙 (JPG 1049KB → 259KB)
+// 색상은 2048 유지, 입체감·반사용 normal/specular는 1024로 충분
+const EARTH_TEXTURES = [
+  '/textures/earth_atmos_2048.webp',
+  '/textures/earth_normal_1024.webp',
+  '/textures/earth_specular_1024.webp'
+]
+// 번들이 실행되자마자 요청 시작 (React 렌더·Suspense를 기다리지 않음). index.html preload는 느린 망에서
+// JS와 대역폭을 나눠 첫 화면이 1초 늦어져서(측정) 쓰지 않음
+useTexture.preload(EARTH_TEXTURES)
+
 interface GlobeProps {
   onSelectPin?: (pos: THREE.Vector3) => void
 }
@@ -69,13 +80,7 @@ export default function Globe({ onSelectPin }: GlobeProps) {
   const [cameraDistance, setCameraDistance] = useState(20)
 
   // 텍스처 로드
-  // three.js examples(MIT) 텍스처를 WebP로 변환해 직접 서빙 (JPG 1049KB → 259KB)
-  // 색상은 2048 유지, 입체감·반사용 normal/specular는 1024로 충분
-  const [colorMap, normalMap, specularMap] = useTexture([
-    '/textures/earth_atmos_2048.webp',
-    '/textures/earth_normal_1024.webp',
-    '/textures/earth_specular_1024.webp'
-  ])
+  const [colorMap, normalMap, specularMap] = useTexture(EARTH_TEXTURES)
 
   // 현재 줌 레벨에 따라 보여줄 핀 필터링
   const visibleCities = useMemo(() => {
