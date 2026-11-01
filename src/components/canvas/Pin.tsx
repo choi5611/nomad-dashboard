@@ -101,7 +101,8 @@ export default function Pin({ lat, lng, label, activityCount = 0, onSelect }: Pi
           className="flex flex-col items-center select-none -translate-y-[55%]"
         >
           {/* 타이틀 뱃지 디자인 고도화 */}
-          <div className={`px-2 py-0.5 rounded-full backdrop-blur-md border shadow-lg transition-all duration-300 ${
+          {/* backdrop-blur 금지: 라벨이 매 프레임 움직이는 캔버스 위에 있어 블러를 매 프레임 다시 계산 → 프레임 드롭(측정: 50→60fps) */}
+          <div className={`px-2 py-0.5 rounded-full border shadow-lg transition-all duration-300 ${
             activityCount > 0 
               ? 'bg-cyan-500/30 border-cyan-400/50 shadow-cyan-500/20 scale-105' 
               : 'bg-slate-900/80 border-white/10'
