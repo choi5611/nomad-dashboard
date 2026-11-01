@@ -50,22 +50,9 @@ export default function UserProfileModal({ userId, isOpen, onClose }: UserProfil
         })
         .subscribe()
 
-      // 2. 실시간 프로필 정보 구독 (프라이버시 설정 등 실시간 반영)
-      const profileChannel = supabase
-        .channel(`profile-updates-${userId}`)
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id.eq.${userId}`
-        }, (payload) => {
-          setProfile(payload.new)
-        })
-        .subscribe()
-
+      // (profiles는 Realtime publication에 없고 필터 문법도 틀려 한 번도 동작하지 않던 프로필 구독은 제거)
       return () => {
         supabase.removeChannel(friendshipChannel)
-        supabase.removeChannel(profileChannel)
       }
     }
   }, [isOpen, userId, currentUser])
