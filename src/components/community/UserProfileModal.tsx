@@ -112,16 +112,9 @@ export default function UserProfileModal({ userId, isOpen, onClose }: UserProfil
       
       if (error) throw error
       
+      // 상대에게 가는 친구 요청 알림은 friendships INSERT 트리거(notify_on_friend_request)가 생성
       setFriendStatus('pending_sent')
       toast.success("친구 요청을 보냈습니다!")
-      
-      await supabase.from('notifications').insert({
-        receiver_id: userId,
-        sender_id: currentUser.id,
-        type: 'friend_request',
-        post_id: null
-      })
-      
     } catch (error: any) {
       toast.error("요청 실패: " + error.message)
     } finally {

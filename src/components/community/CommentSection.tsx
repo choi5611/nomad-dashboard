@@ -12,12 +12,11 @@ import UserProfileModal from "./UserProfileModal"
 
 interface CommentSectionProps {
   postId: string
-  postAuthorId: string
   onCommentCountChange?: (count: number) => void
   highlightCommentId?: string
 }
 
-export default function CommentSection({ postId, postAuthorId, onCommentCountChange, highlightCommentId }: CommentSectionProps) {
+export default function CommentSection({ postId, onCommentCountChange, highlightCommentId }: CommentSectionProps) {
   const user = useAuth((state) => state.user)
   const {
     data,
@@ -32,7 +31,7 @@ export default function CommentSection({ postId, postAuthorId, onCommentCountCha
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
 
-  const { content, setContent, submitting, handleSubmit } = useCommentSubmit(postId, postAuthorId)
+  const { content, setContent, submitting, handleSubmit } = useCommentSubmit(postId)
   const { isDeleteModalOpen, setIsDeleteModalOpen, handleDelete, openDeleteModal } = useCommentDelete(postId)
   const { replyTo, inputRef, handleReplyClick, clearReply } = useReplyState()
 

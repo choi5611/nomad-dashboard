@@ -59,7 +59,6 @@ const PostCard = memo(function PostCard({
   // 좋아요 훅
   const { isLiked, likeCount, toggleLike } = usePostLike(
     post.id,
-    post.author_id,
     user,
     post.likes_count || 0
   )
@@ -145,7 +144,6 @@ const PostCard = memo(function PostCard({
       {showComments && (
         <CommentSection
           postId={post.id}
-          postAuthorId={post.author_id}
           onCommentCountChange={setCommentCount}
           highlightCommentId={navigationTarget?.postId === post.id ? navigationTarget.commentId : undefined}
         />
