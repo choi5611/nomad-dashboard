@@ -75,17 +75,18 @@ export function useCityChat(
     setRealtimeMessages([])
   }, [cityId])
 
+  // 로그인 상태가 바뀌어도 채널을 다시 만들지 않도록 user id는 ref로 읽는다
+  // (같은 이름 채널을 바로 다시 만들면 supabase-js가 닫히는 중인 채널을 돌려줘 구독이 조용히 죽음)
+  const userIdRef = useRef(user?.id)
+  useEffect(() => {
+    userIdRef.current = user?.id
+  }, [user?.id])
+
   // 3. 실시간 구독 + 프레즌스
   useEffect(() => {
     if (!cityId) return
 
-    const channel = supabase.channel(`chat:${cityId}`, {
-      config: {
-        presence: {
-          key: user?.id || 'anonymous-' + Math.random().toString(36).substring(7),
-        },
-      },
-    })
+    const channel = supabase.channel(`chat:${cityId}`)
 
     channel
       .on(
@@ -99,7 +100,7 @@ export function useCityChat(
         },
         async (payload) => {
           if (payload.new.city_id !== cityId) return
-          if (payload.new.author_id === user?.id) return
+          if (payload.new.author_id === userIdRef.current) return
 
           const { data } = await supabase
             .from("profiles")
@@ -142,7 +143,7 @@ export function useCityChat(
       supabase.removeChannel(channel)
       clearInterval(timer)
     }
-  }, [cityId, user?.id])
+  }, [cityId])
 
   const handleSendMessage = async (content: string) => {
     if (!user || !content.trim() || !cityId) return

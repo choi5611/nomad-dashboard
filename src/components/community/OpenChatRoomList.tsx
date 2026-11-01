@@ -63,7 +63,8 @@ export default function OpenChatRoomList({
 
     // 실시간 구독
     const channel = supabase
-      .channel("open_rooms_changes")
+      // 고유 이름: 로그인 시 재구독할 때 닫히는 중인 같은 이름 채널을 돌려받아 구독이 죽는 것을 방지
+      .channel(`open_rooms_changes:${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         {

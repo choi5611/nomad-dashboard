@@ -20,13 +20,17 @@ export const useAuth = create<AuthState>((set) => ({
   loading: true,
 
   setSession: (session) => {
+    const prevUser = useAuth.getState().user
+    // 토큰 갱신(약 1시간마다)에도 같은 유저면 user 객체를 유지 → [user] 의존 effect(실시간 구독)가 재실행되지 않음
+    // shortcut: 같은 id면 이전 user 객체를 쓰므로 USER_UPDATED(이메일 변경 등)는 새로고침 후 반영
+    const sameUser = !!session?.user && prevUser?.id === session.user.id
     set({
       session,
-      user: session?.user ?? null
+      user: sameUser ? prevUser : session?.user ?? null
     })
     if (session?.user) {
-      // 세션이 설정될 때 프로필도 가져옵니다.
-      useAuth.getState().fetchProfile(session.user.id)
+      // 새 유저일 때만 프로필을 가져옵니다.
+      if (!sameUser) useAuth.getState().fetchProfile(session.user.id)
     } else {
       set({ profile: null, loading: false })
     }
