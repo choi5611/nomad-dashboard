@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { type City } from "@/store/useStore"
+import { useStore, type City } from "@/store/useStore"
 
 export function useGeocoding() {
   const [loading, setLoading] = useState(false)
@@ -23,13 +23,18 @@ export function useGeocoding() {
           const uniqueHints = Array.from(new Set(hints.filter(h => h !== p.name))).slice(0, 2).join(', ')
           const displayName = uniqueHints ? `${p.name} (${uniqueHints})` : p.name
 
+          const countryCode = p.countrycode?.toUpperCase() || p.country?.substring(0, 2).toUpperCase() || "UN"
+          // 검색 API는 시간대·통화를 주지 않으므로 같은 나라의 기존 도시 값을 빌려 쓴다
+          // shortcut: 시간대가 여러 개인 나라(미국 등)는 그 나라 첫 도시의 시간대를 씀, 정확도가 필요하면 좌표→시간대 API로 교체
+          const sameCountry = useStore.getState().cities.find(c => c.countryCode === countryCode)
+
           return {
             name: displayName,
             lat: f.geometry.coordinates[1],
             lng: f.geometry.coordinates[0],
-            timezone: "UTC", 
-            countryCode: p.countrycode?.toUpperCase() || p.country?.substring(0, 2).toUpperCase() || "UN",
-            currencyCode: "USD",
+            timezone: sameCountry?.timezone ?? "UTC",
+            countryCode,
+            currencyCode: sameCountry?.currencyCode ?? "USD",
             priority: 3
           }
         })
