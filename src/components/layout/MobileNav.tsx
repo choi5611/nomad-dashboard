@@ -23,7 +23,7 @@ export default function MobileNav() {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 h-[72px] bg-slate-900/90 backdrop-blur-xl border-t border-white/10 z-[100] flex items-center justify-around px-2 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 h-[72px] bg-slate-900/95 border-t border-white/10 z-[100] flex items-center justify-around px-2 pb-safe">
       {navItems.map((item) => {
         const Icon = item.icon
         const isActive = activeView === item.id
