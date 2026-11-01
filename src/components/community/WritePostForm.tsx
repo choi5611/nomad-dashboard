@@ -4,7 +4,6 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/store/useAuth"
 import { useStore } from "@/store/useStore"
 import { toast } from "sonner"
-import { v4 as uuidv4 } from 'uuid'
 import { useMediaQuery } from "@/hooks/useMediaQuery"
 
 import { compressImage } from "@/utils/media"
@@ -66,7 +65,7 @@ export default function WritePostForm({ onClose, onPostCreate, tabs }: WritePost
       }
 
       const fileExt = finalFile.name.split('.').pop()
-      const fileName = `${uuidv4()}.${fileExt}`
+      const fileName = `${crypto.randomUUID()}.${fileExt}`
       const filePath = `${user?.id}/${fileName}`
 
       const bucketName = isVideo ? 'post-videos' : 'post-images'

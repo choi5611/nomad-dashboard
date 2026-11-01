@@ -2,7 +2,6 @@ import { useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { getCroppedImg } from "@/utils/cropImage"
-import { v4 as uuidv4 } from "uuid"
 import { useQueryClient } from "@tanstack/react-query"
 import type { User } from "@supabase/supabase-js"
 
@@ -34,7 +33,7 @@ export function useAvatarCrop(user: User | null, fetchProfile: (userId: string) 
       const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels)
       if (!croppedImageBlob) throw new Error("이미지 크롭 실패")
 
-      const fileName = `${user.id}/${uuidv4()}.webp`
+      const fileName = `${user.id}/${crypto.randomUUID()}.webp`
       const filePath = fileName
 
       // Storage 업로드
