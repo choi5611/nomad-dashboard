@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from "react"
+import { useRef, useState, useMemo, Suspense } from "react"
 import { useFrame } from "@react-three/fiber"
 import { useTexture } from "@react-three/drei"
 import * as THREE from "three"
@@ -68,6 +68,33 @@ const EARTH_TEXTURES = [
 // JS와 대역폭을 나눠 첫 화면이 1초 늦어져서(측정) 쓰지 않음
 useTexture.preload(EARTH_TEXTURES)
 
+const EARTH_SPECULAR = new THREE.Color(0x333333)
+
+function TexturedEarth() {
+  const [colorMap, normalMap, specularMap] = useTexture(EARTH_TEXTURES)
+  return (
+    <mesh>
+      <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
+      <meshPhongMaterial
+        map={colorMap}
+        normalMap={normalMap}
+        specularMap={specularMap}
+        specular={EARTH_SPECULAR}
+        shininess={5}
+      />
+    </mesh>
+  )
+}
+
+function PlainEarth() {
+  return (
+    <mesh>
+      <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
+      <meshPhongMaterial color="#0b2340" specular={EARTH_SPECULAR} shininess={5} />
+    </mesh>
+  )
+}
+
 interface GlobeProps {
   onSelectPin?: (pos: THREE.Vector3) => void
 }
@@ -80,7 +107,6 @@ export default function Globe({ onSelectPin }: GlobeProps) {
   const [cameraDistance, setCameraDistance] = useState(20)
 
   // 텍스처 로드
-  const [colorMap, normalMap, specularMap] = useTexture(EARTH_TEXTURES)
 
   // 현재 줌 레벨에 따라 보여줄 핀 필터링
   const visibleCities = useMemo(() => {
@@ -112,8 +138,6 @@ export default function Globe({ onSelectPin }: GlobeProps) {
     }
   })
 
-  const globeRef = useRef<THREE.Object3D>(null)
-
   const handlePinClick = (city: City, pos: THREE.Vector3) => {
     setSelectedCity(city)
     if (onSelectPin) onSelectPin(pos)
@@ -122,16 +146,10 @@ export default function Globe({ onSelectPin }: GlobeProps) {
   return (
     <group ref={groupRef}>
       {/* 1. 지구본 본체 */}
-      <mesh ref={globeRef}>
-        <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
-        <meshPhongMaterial
-          map={colorMap}
-          normalMap={normalMap}
-          specularMap={specularMap}
-          specular={new THREE.Color(0x333333)}
-          shininess={5}
-        />
-      </mesh>
+      {/* 텍스처를 받는 동안 단색 구를 먼저 그려 별·핀·그리드가 바로 보이게 (예전엔 텍스처가 올 때까지 화면 전체가 검정) */}
+      <Suspense fallback={<PlainEarth />}>
+        <TexturedEarth />
+      </Suspense>
 
       {/* 2. 디지털 그리드 */}
       <mesh>
