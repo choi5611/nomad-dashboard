@@ -55,6 +55,9 @@ jobs:
             echo "::warning::SUPABASE_DB_URL secret이 없어 마이그레이션을 건너뜀"
             exit 0
           fi
+          # 새 마이그레이션이 없어도 접속은 매번 확인 (secret이 틀리면 실제 마이그레이션 때가 아니라 지금 실패)
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -qtAc 'select 1' >/dev/null
+          echo "DB 접속 확인"
           files=$(git diff --name-only --diff-filter=A "$BEFORE" "$GITHUB_SHA" -- 'supabase/migrations/*.sql' | sort)
           if [ -z "$files" ]; then
             echo "새 마이그레이션 없음"
