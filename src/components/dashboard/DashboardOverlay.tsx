@@ -271,12 +271,12 @@ export default function DashboardOverlay() {
                 {!profile ? <div className="h-4 w-16 lg:w-20 bg-white/10 rounded animate-pulse" /> : <span className="text-xs lg:text-sm font-medium text-white/70 group-hover:text-white truncate max-w-[80px] lg:max-w-[120px]">{profile.username}</span>}
               </button>
             ) : (
-              <button onClick={openLoginModal} className="px-3 lg:px-4 py-1.5 lg:py-2 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/30 rounded-xl text-cyan-400 text-xs lg:text-sm font-bold transition-all backdrop-blur-md shrink-0">Login</button>
+              <button onClick={openLoginModal} className="px-3 lg:px-4 py-1.5 lg:py-2 bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/30 rounded-xl text-cyan-400 text-xs lg:text-sm font-bold transition-all shrink-0">Login</button>
             )}
             <div className="shrink-0"><NotificationCenter /></div>
             <button
               onClick={toggleChat}
-              className={`p-2.5 lg:p-3 rounded-xl border transition-all shadow-lg backdrop-blur-md relative shrink-0 ${isChatOpen ? "bg-cyan-500 border-cyan-400 text-white" : "bg-white/5 border-white/10 text-white/50 hover:text-white"}`}
+              className={`p-2.5 lg:p-3 rounded-xl border transition-all shadow-lg relative shrink-0 ${isChatOpen ? "bg-cyan-500 border-cyan-400 text-white" : "bg-white/5 border-white/10 text-white/50 hover:text-white"}`}
             >
               <MessageSquare className="w-4 h-4 lg:w-5 lg:h-5" />
               {(unreadState.city + Object.values(unreadState.dms).reduce((a: number, b: number) => a + b, 0) + Object.values(unreadState.rooms).reduce((a: number, b: number) => a + b, 0)) > 0 && (
